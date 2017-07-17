@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace DMC {
 	public static class DebugAlgorithm {
-		public static int depth_ = 8;
+		public static int depth_ = 1;
 		public static int checks_ = 20;
 		public static int tetnum_ = 0;
 		public static int debugdepth_ = 22;
@@ -18,121 +18,93 @@ namespace DMC {
 			//return null;
 		}
 
-		public static void FindCorrectCombination() {
-			Debug.Log("FindCorrectCombination called.");
-			
-			int totalsteps = 10000000;
+		/*public static void FindCorrectCombination() {
+				Debug.Log("FindCorrectCombination called.");
+				
+				int totalsteps = 10000000;
 
-			for(int i = 0; i < totalsteps; i++) {
-				ScrambleTetrahedronSplittingTable();
+				for(int i = 0; i < totalsteps; i++) {
+					ScrambleTetrahedronSplittingTable();
 
-				if(CheckValid() == true) {
-					UnityEngine.Debug.Log("Successful combination found on iteration #" + i + ".");
-					Debug.Log("Tetrahedron Vertex Order:");
-					Debug.Log(Utility.ArrayToString(Lookups.RootTetrahedrons));
-
-					Debug.Log("Tetrahedron Splitting Table:");
-					Debug.Log(Utility.ArrayToString(Lookups.TetrahedronVertexOrder));
-					return;
-				}
-
-
-			}
-			UnityEngine.Debug.Log("Couldn't find solution for tetrahedron #1. Steps: " + totalsteps);
-		}
-
-		public static void FindNewCorrectTetSplittingTable() {
-			FindCorrectCombination();
-		}
-
-		/* Scrambles Lookups.RootTetrahedron order  until
-		 	CheckValid() returns true (AKA when splitting node, alg always picks longest edge as bisecting edge) */
-		public static void FindCorrectCombinationOfTetVerticesAndOrder() {
-			Debug.Log("Attempting to find correct combination of tetrahedron vertices and tet number...");
-
-			int[] nums = new int[4];
-
-			for(int j = 0; j < 4; j++) {
-				nums[j] = Lookups.RootTetrahedrons[0, j];
-			}
-
-			for(int i = 0; i < 3; i++) {
-				for(int z = 0; z < 1000; z++) {
-					int[] temp = Utility.ScrambleArray(nums);
-					for(int j = 0; j < 4; j++) {
-						Lookups.RootTetrahedrons[0,j] = temp[j];
-					}
 					if(CheckValid() == true) {
-						UnityEngine.Debug.Log("Valid combination found at i = " + i + " on iteration " + z);
+						UnityEngine.Debug.Log("Successful combination found on iteration #" + i + ".");
+						Debug.Log("Tetrahedron Vertex Order:");
+						Debug.Log(Utility.ArrayToString(Lookups.RootTetrahedrons));
 
-						Debug.Log(Utility.ArrayToString(temp));
-
+						Debug.Log("Tetrahedron Splitting Table:");
+						Debug.Log(Utility.ArrayToString(Lookups.TetrahedronVertexOrder));
 						return;
 					}
+
+
 				}
+				UnityEngine.Debug.Log("Couldn't find solution for tetrahedron #1. Steps: " + totalsteps);
 			}
 
-		}
-
-		public static void ScrambleTetrahedronOrderAndVertexCombos() {
-			int[] nums = new int[4];
-
-			for(int j = 0; j < 4; j++) {
-				nums[j] = Lookups.RootTetrahedrons[tetnum_, j];
+			public static void FindNewCorrectTetSplittingTable() {
+				FindCorrectCombination();
 			}
 
-			int[] temp = Utility.ScrambleArray(nums);
+			public static void FindCorrectCombinationOfTetVerticesAndOrder() {
+				Debug.Log("Attempting to find correct combination of tetrahedron vertices and tet number...");
 
-			for(int j = 0; j < 4; j++) {
-				Lookups.RootTetrahedrons[tetnum_,j] = temp[j];
-			}
+				int[] nums = new int[4];
 
+				for(int j = 0; j < 4; j++) {
+					nums[j] = Lookups.RootTetrahedrons[0, j];
+				}
 
-		}
+				for(int i = 0; i < 3; i++) {
+					for(int z = 0; z < 1000; z++) {
+						int[] temp = Utility.ScrambleArray(nums);
+						for(int j = 0; j < 4; j++) {
+							Lookups.RootTetrahedrons[0,j] = temp[j];
+						}
+						if(CheckValid() == true) {
+							UnityEngine.Debug.Log("Valid combination found at i = " + i + " on iteration " + z);
 
-		// Checks each root tetrahedron to make sure that when SplitNode() is called, the
-		// longest edge is always chosen.
-		public static bool CheckValid() {
-			return CreateHierarchy2();
-		}
+							Debug.Log(Utility.ArrayToString(temp));
 
-		public static void ScrambleTetrahedronSplittingTable() {
-			for(int i = 0; i < 3; i++) {
-				for(int j = 0; j < 2; j++) {
-					List<int> q = new List<int>(Lookups.PossibleTetrahedronVertexOrderCombos[j]);
-					for(int z = 0; z < 4; z++) {
-						int index = UnityEngine.Random.Range(0, q.Count);
-						int n = q[index];
-						q.RemoveAt(index);
-						Lookups.TetrahedronVertexOrder[i,j,z] = n;
+							return;
+						}
 					}
 				}
-			}
-			if(UnityEngine.Random.Range(0, 5000000) == 500) {
-				UnityEngine.Debug.Log("Scrambled Tetrahedron Splitting table: " + Utility.ArrayToString(Lookups.TetrahedronVertexOrder));
-			}
-		}
 
-		public static bool CreateHierarchy2() {
-			Root root = new Root();
-			root.Children = new Node[1];
-			Node n = new Node();
-			n.Depth = 0;
-			n.HierarchyVertices = new Vector3[6];
-			for(int j = 0; j < 4; j++) {
-				n.HierarchyVertices[j] = Lookups.StartingVerts[Lookups.RootTetrahedrons[tetnum_,j]];
 			}
 
-			for(int j = 0; j < checks_; j++) {
-				if(RecursiveSplitNode2(debugdepth_, n, 2) == false) {
-					return false;
+			public static void ScrambleTetrahedronOrderAndVertexCombos() {
+				int[] nums = new int[4];
+
+				for(int j = 0; j < 4; j++) {
+					nums[j] = Lookups.RootTetrahedrons[tetnum_, j];
 				}
 
+				int[] temp = Utility.ScrambleArray(nums);
+
+				for(int j = 0; j < 4; j++) {
+					Lookups.RootTetrahedrons[tetnum_,j] = temp[j];
+				}
+
+
 			}
-			
-			root.Children[0] = n;
-			return true;
-		}
+			public static void ScrambleTetrahedronSplittingTable() {
+				for(int i = 0; i < 3; i++) {
+					for(int j = 0; j < 2; j++) {
+						List<int> q = new List<int>(Lookups.PossibleTetrahedronVertexOrderCombos[j]);
+						for(int z = 0; z < 4; z++) {
+							int index = UnityEngine.Random.Range(0, q.Count);
+							int n = q[index];
+							q.RemoveAt(index);
+							Lookups.TetrahedronVertexOrder[i,j,z] = n;
+						}
+					}
+				}
+				if(UnityEngine.Random.Range(0, 5000000) == 500) {
+					UnityEngine.Debug.Log("Scrambled Tetrahedron Splitting table: " + Utility.ArrayToString(Lookups.TetrahedronVertexOrder));
+				}
+			}
+			*/
+
 
 		public static Root CreateHierarchy(Vector3 PlayerLocation) {
 			Root root = new Root();
@@ -140,25 +112,35 @@ namespace DMC {
 			root.EdgeToTetList = new Dictionary<Vector3, List<Node>>();
 
 			root.Children = new Node[6];
+			root.IsValid = true;
 			for(int i = 0; i < 6; i++) {
 				Node node = new Node();
 				node.Number = mostRecentTetrahedronCount;
 				mostRecentTetrahedronCount++;
 				node.Depth = 0;
 				node.IsLeaf = true;
+				node.HVertices = new Vector3[4];
 				node.Vertices = new Vector3[4];
 				for(int j = 0; j < 4; j++) {
+					node.HVertices[j] = Lookups.StartingVerts[Lookups.RootTetrahedrons[i,j]];
 					node.Vertices[j] = Lookups.StartingVerts[Lookups.RootTetrahedrons[i,j]];
 				}
+				if(i % 2 == 1) {
+					node.Vertices[0] = node.HVertices[1];
+					node.Vertices[1] = node.HVertices[0];
+					node.ReversedWindingOrder = true;
+				}
+
 				node.CentralVertex = Utility.FindMidpoint(node.Vertices[0], node.Vertices[1]);
 				AddTetToDictionary(root, node);
-				RecursiveSplitNode(depth_, node, root, 3);
+				if(!RecursiveSplitNode(depth_, node, root, 3)) {
+					root.IsValid = false;	
+				};
 				root.Children[i] = node;
 			}
 
 			return root;
 		}
-
 		public static bool RecursiveSplitNode(int n, Node toSplit, Root root, int childToSplit) {
 			bool returning = true;
 			if(n <= 0) return true;
@@ -169,22 +151,12 @@ namespace DMC {
 			if(childToSplit == 3) {
 				f = 0;
 			}
-			if(SplitNode(root, toSplit) == false) {
+			if(!SplitNode(root, toSplit) 
+				| !RecursiveSplitNode(n - 1, toSplit.Children[0], root, childToSplit) 
+				| !RecursiveSplitNode(n - 1, toSplit.Children[1], root, childToSplit)) {
 				returning = false;
 			}
-			RecursiveSplitNode(n - 1, toSplit.Children[0], root, childToSplit);
-			return RecursiveSplitNode(n - 1, toSplit.Children[1], root, childToSplit);
-		}
-		public static bool RecursiveSplitNode2(int n, Node toSplit, int childToSplit) {
-			if(n <= 0) return true;
-			int f = childToSplit;
-			if(childToSplit == 2) { 
-				f = UnityEngine.Random.Range(0, 2);
-			}
-			if(SplitNode2(toSplit) == false) {
-				return false;
-			}
-			return RecursiveSplitNode2(n - 1, toSplit.Children[f], childToSplit);
+			return returning;
 		}
 		// 3rd parameter prevents infinite recursive calls
 		public static bool SplitNode(Root root, Node node, uint doNotSplit = uint.MaxValue) {
@@ -195,20 +167,22 @@ namespace DMC {
 			float dist_longest = 0;
 			int pair;
 			for(int i = 0; i < 6; i++) {
-				float dist = Vector3.Distance(node.Vertices[Lookups.EdgePairs[i,0]], node.Vertices[Lookups.EdgePairs[i,1]]);
+				float dist = Vector3.Distance(node.HVertices[Lookups.EdgePairs[i,0]], node.HVertices[Lookups.EdgePairs[i,1]]);
 				if(dist > dist_longest) {
 					dist_longest = dist;
 					pair = i;
 				}
 			}
 
-			float dist_01 = Vector3.Distance(node.Vertices[0], node.Vertices[1]);
+			float dist_01 = Vector3.Distance(node.HVertices[0], node.HVertices[1]);
 
 			//UnityEngine.Debug.Log("D" + node.Depth + ": Empircal longest edge: " + dist_longest + ", 0-1 edge distance: " + dist_01);
 
 			// Ensure conforming by checking neighboring tetrahedra
 			for(int i = 0; i < 6; i++) {
+
 				Vector3 edgeMidpoint = Utility.FindMidpoint(node.Vertices[Lookups.EdgePairs[i, 0]], node.Vertices[Lookups.EdgePairs[i, 1]]);
+
 				if(root.EdgeToTetList.ContainsKey(edgeMidpoint)) {
 					List<Node> neighboringTetrahedra = root.EdgeToTetList[edgeMidpoint];
 					for(int j = 0; j < neighboringTetrahedra.Count; j++) {
@@ -228,89 +202,39 @@ namespace DMC {
 			}
 
 			// Construct new tetrahedra
+			Vector3[] CachedVertices = new Vector3[5];
+			for(int i = 0; i < 4; i++) {
+				CachedVertices[i] = node.HVertices[i];
+			}
+			CachedVertices[4] = node.CentralVertex;
 			for(int i = 0; i < 2; i++) {
 				Node child = new Node();
 				child.Number = mostRecentTetrahedronCount;
 				mostRecentTetrahedronCount++;
+				child.HVertices = new Vector3[4];
 				child.Vertices = new Vector3[4];
 				child.Depth = node.Depth + 1;
 				child.IsLeaf = true;
 				child.TetrahedronType = (node.TetrahedronType + 1) % 3;
-				child.ReverseWindingOrder = node.ReverseWindingOrder;
-
-				if(node.TetrahedronType == 2 && i == 1) {
-					child.ReverseWindingOrder = !node.ReverseWindingOrder;
-				}
-
-				string str = "";
-				for(int j = 0; j < 4; j++) {
-					int vertexIndex = Lookups.TetrahedronVertexOrder[node.TetrahedronType, i, j];
-
-					if(vertexIndex == -1) {
-						child.Vertices[j] = node.CentralVertex;
-					}
-					else {
-						child.Vertices[j] = node.Vertices[vertexIndex];
-					}
-					str += child.Vertices[j];
-				}
-				//UnityEngine.Debug.Log("Tetrahedron vertices: " + str);
-				child.CentralVertex = Utility.FindMidpoint(child.Vertices[0], child.Vertices[1]);
-				//UnityEngine.Debug.Log("Tetrahedron CentralVertex: " + child.CentralVertex);
-				node.Children[i] = child;
-			}
-
-			return true;
-		}
-
-		public static bool SplitNode2(Node node) {
-			node.Children = new Node[2];
-			// Find the longest edge (its the edge between v0 and v1)
-			// Find the midpoint between the longest edge (v0 + v1)/2
-
-			float dist_longest = 0;
-			int pair;
-			for(int i = 0; i < 6; i++) {
-				float dist = Vector3.Distance(node.Vertices[Lookups.EdgePairs[i,0]], node.Vertices[Lookups.EdgePairs[i,1]]);
-				if(dist > dist_longest) {
-					dist_longest = dist;
-					pair = i;
-				}
-			}
-
-			float dist_01 = Vector3.Distance(node.Vertices[0], node.Vertices[1]);
-			Vector3 midpoint = (node.Vertices[0] + node.Vertices[1])/2;
-
-			if(!(dist_01 == dist_longest)) {
-				return false;
-			}
-
-			// Construct new tetrahedra
-			for(int i = 0; i < 2; i++) {
-				Node child = new Node();
-				child.Vertices = new Vector3[4];
-				child.Depth = node.Depth + 1;
-				child.TetrahedronType = (node.TetrahedronType + 1) % 3;
-				child.ReverseWindingOrder = node.ReverseWindingOrder;
-
-				if(node.TetrahedronType == 2 && i == 1) {
-					child.ReverseWindingOrder = !node.ReverseWindingOrder;
+				child.ReversedWindingOrder = node.ReversedWindingOrder;
+				if(node.TetrahedronType == 0 && i == 1 ||
+				   node.TetrahedronType == 2 && i == 1) {
+					child.ReversedWindingOrder = !node.ReversedWindingOrder;
 				}
 
 				for(int j = 0; j < 4; j++) {
-					int vertexIndex = Lookups.TetrahedronVertexOrder[node.TetrahedronType, i, j];
-
-					if(vertexIndex == -1) {
-						child.Vertices[j] = midpoint;
-					}
-					else {
-						child.Vertices[j] = node.Vertices[vertexIndex];
-					}
+					child.HVertices[j] = CachedVertices[Lookups.TetrahedronVertexOrder[node.TetrahedronType, i, j]];
+					child.Vertices[j] = child.HVertices[j];
 				}
+				if(child.ReversedWindingOrder) {
+					child.Vertices[0] = child.HVertices[1];
+					child.Vertices[1] = child.HVertices[0];
+				}
+				child.CentralVertex = Utility.FindMidpoint(child.HVertices[0], child.HVertices[1]);
 				node.Children[i] = child;
 			}
 
-			return true;
+			return dist_01 == dist_longest;
 		}
 
 		public static void AddTetToDictionary(Root root, Node node) {
@@ -492,10 +416,6 @@ namespace DMC {
 
 			for(int i = 0; i < Hexahedra.Count; i++) {
 				bool flip = false;
-
-				if(i < a || (i >= a * 2 && i < a * 3)) {
-					flip = true;
-				}
 
 				MCBarycentricUnit u = new MCBarycentricUnit();
 				u.BarycentricCoords = new Vector4[8];

@@ -24,7 +24,6 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 
 		running = true;
 		UnityEngine.Debug.Log("Root #children: " + root.Children.Length);
-		//MeshifyRoot();
 		extractedHexahedra = DMC.DebugAlgorithm.ExtractHexahedra(root.Children[0]);
 
 		subHexahedronList = new List<DMC.Hexahedron>();
@@ -32,13 +31,11 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 
 		PrecomputedVolumeMesh = DMC.DebugAlgorithm.CreatePrecomputedVolumeMesh(subHexahedronList, root.Children[0]);
 
-		UnityEngine.Debug.Log("Volume Mesh length: " + PrecomputedVolumeMesh.Count);
-
-		CartesianUnitsTest = DMC.DebugAlgorithm.ConvertVolumeMeshToCartesian(PrecomputedVolumeMesh, root.Children[1]);
+		//CartesianUnitsTest = DMC.DebugAlgorithm.ConvertVolumeMeshToCartesian(PrecomputedVolumeMesh, root.Children[1]);
 		PolyganiseRoot();
-		MeshRootTetrahedrons();
+		//MeshRootTetrahedrons();
 
-		UnityEngine.Debug.Log("valid LEB scheme? " + DMC.DebugAlgorithm.CheckValid());
+		UnityEngine.Debug.Log("valid LEB scheme? " + root.IsValid);
 	}
 	
 	Color[] colors = { Color.red, Color.yellow, Color.white, Color.cyan, Color.green, Color.blue, Color.gray, Color.black };
@@ -72,7 +69,7 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 	void OnDrawGizmos() {
 		if(running) {
 			Utility.DrawNode(root.Children[0], 4f);
-			DrawExtractedHexahedra();
+			//DrawExtractedHexahedra();
 
 			//Utility.DrawHierarchy(root);
 			//DrawSubdividedHexahedra();
@@ -123,7 +120,7 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 	void RecursiveMeshifyTetrahedron(DMC.Node node, int n, Vector3 offset) {
 		if(n <= 0) return;
 		MeshifyTetrahedron(node, offset);
-		for(int i = 0; i < 2; i++) {
+		for(int i = 0; i < 2 && node.Children != null; i++) {
 			RecursiveMeshifyTetrahedron(node.Children[i], n - 1, new Vector3(0f, 0f, 2f) + offset);
 		}
 	}
@@ -134,17 +131,6 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 		Vector3[] verts = new Vector3[4];
 		for(int i = 0; i < 4; i++) {
 			verts[i] = node.Vertices[i];
-		}
-
-
-		if(node.ReverseWindingOrder) {
-			UnityEngine.Debug.Log("Reverse winding order true.");
-			Vector3 a = verts[1];
-			verts[1] = verts[0];
-			verts[0] = a;
-			/*Vector3 b = 1 * vertices[3];
-			vertices[3] = vertices[2];
-			vertices[2] = b; */
 		}
 
 		List<Vector3> vertices = new List<Vector3>();
@@ -196,7 +182,7 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 	void Update () {
 		if(!running) return;
 		if(Input.GetKey("r")) {
-			DMC.DebugAlgorithm.FindNewCorrectTetSplittingTable();
+			//DMC.DebugAlgorithm.FindNewCorrectTetSplittingTable();
 
 			for(int i = 0; i < TestMeshes.Count; i++) {
 				Destroy(TestMeshes[i], 0);
