@@ -77,8 +77,8 @@ namespace DMC {
 		};
 
 		public static readonly Vector3[] StartingVerts = { 
-			new Vector3(0, 0, 1), new Vector3(1, 0, 1), new Vector3(1, 0, 0), new Vector3(0, 0, 0), 
-			new Vector3(0, 1, 1), new Vector3(1, 1, 1), new Vector3(1, 1, 0), new Vector3(0, 1, 0) };	
+			new Vector3(-1, -1, 1), new Vector3(1, -1, 1), new Vector3(1, -1, -1), new Vector3(-1, -1, -1), 
+			new Vector3(-1, 1, 1), new Vector3(1, 1, 1), new Vector3(1, 1, -1), new Vector3(-1, 1, -1) };	
 
 		public static int[] HexahedronVertexReorder = {
 			3, 5, 2, 0, 6, 7, 4, 1

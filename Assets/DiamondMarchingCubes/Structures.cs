@@ -7,7 +7,8 @@ namespace DMC {
 		public Vector3[] Vertices; // used for everything else (consistent clockwise ordering)
 		public Vector3[] HVertices; // used for splitting tetrahedrons
 		public Vector3 Center;
-		public Vector3 CentralVertex; // midpoint of longest edge
+		public Vector3 CentralVertex; // midpoint of longest edge, center of bounding sphere
+		public float BoundRadius; // half of longest edge length
 		public int TetrahedronType;
 		public int Depth; // 0 indicates top-level tetrahedron
 		public uint Number; // used as UID system

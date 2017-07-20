@@ -34,6 +34,14 @@ public static class Math {
 }
 
 public static class Utility {
+    public static Color SinColor(float value) {
+        float frequency = 0.3f;
+        float red   = Mathf.Sin(frequency*value + 0) * 0.5f + 0.5f;
+        float green = Mathf.Sin(frequency*value + 2) * 0.5f + 0.5f;
+        float blue  = Mathf.Sin(frequency*value + 4) * 0.5f + 0.5f;
+        return new Color(red, green, blue);
+    }
+
     public static Color[] GetRandomColorArray(int length) {
         Color[] colors = new Color[length];
 		for(int i = 0; i < colors.Length; i++) {

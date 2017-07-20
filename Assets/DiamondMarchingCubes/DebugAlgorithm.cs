@@ -130,7 +130,7 @@ namespace DMC {
 					node.Vertices[1] = node.HVertices[0];
 					node.ReversedWindingOrder = true;
 				}
-
+				node.BoundRadius = Vector3.Distance(node.HVertices[0], node.HVertices[1]) / 2f;
 				node.CentralVertex = Utility.FindMidpoint(node.Vertices[0], node.Vertices[1]);
 				AddTetToDictionary(root, node);
 				if(!RecursiveSplitNode(depth_, node, root, 3)) {
@@ -158,8 +158,21 @@ namespace DMC {
 			}
 			return returning;
 		}
+
 		// 3rd parameter prevents infinite recursive calls
+
+		public static void DynamicRefine(Root root, Vector3 position, int MaxDepth, float a) {
+			List<Node> SplitList = new List<Node>();
+			List<Node> CoarsenList = new List<Node>();
+
+
+		}
+
+		//private static void DynamicRefine(Root root, Node node, List<Node> SplitList, List<Node> CoarsenList)
+
 		public static bool SplitNode(Root root, Node node, uint doNotSplit = uint.MaxValue) {
+			UnityEngine.Debug.Log("SplitNode called");
+
 			node.Children = new Node[2];
 			node.IsLeaf = false;
 
@@ -179,7 +192,7 @@ namespace DMC {
 			//UnityEngine.Debug.Log("D" + node.Depth + ": Empircal longest edge: " + dist_longest + ", 0-1 edge distance: " + dist_01);
 
 			// Ensure conforming by checking neighboring tetrahedra
-			for(int i = 0; i < 6; i++) {
+			/*for(int i = 0; i < 6; i++) {
 
 				Vector3 edgeMidpoint = Utility.FindMidpoint(node.Vertices[Lookups.EdgePairs[i, 0]], node.Vertices[Lookups.EdgePairs[i, 1]]);
 
@@ -199,7 +212,7 @@ namespace DMC {
 						}
 					}
 				}
-			}
+			}*/
 
 			// Construct new tetrahedra
 			Vector3[] CachedVertices = new Vector3[5];
@@ -230,11 +243,41 @@ namespace DMC {
 					child.Vertices[0] = child.HVertices[1];
 					child.Vertices[1] = child.HVertices[0];
 				}
+				child.BoundRadius = Vector3.Distance(child.HVertices[0], child.HVertices[1]) / 2f;
 				child.CentralVertex = Utility.FindMidpoint(child.HVertices[0], child.HVertices[1]);
 				node.Children[i] = child;
 			}
 
 			return dist_01 == dist_longest;
+		}
+
+		// higher a = lower detail
+		public static void SplitTreeAtPosition(Root root, Vector3 viewerPosition, float a, float multiplier, int maxDepth) {
+			for(int i = 0; i < root.Children.Length; i++) {
+				RecursiveSplitNodeAtPosition(root, root.Children[i], viewerPosition, a, multiplier, maxDepth);
+			}
+		}
+
+		public static void RecursiveSplitNodeAtPosition(Root root, Node node, Vector3 viewerPosition, float a, float multiplier, int maxDepth) {
+			if(node.IsLeaf) {
+				float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * multiplier), viewerPosition) - (node.BoundRadius * multiplier), 0, float.MaxValue);
+				//float fTargetDepth = Mathf.Log(dist, a);
+
+				float fTargetDepth = (6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
+				int targetDepth =  (int) fTargetDepth; //(int)Mathf.Round(fTargetDepth);
+
+				UnityEngine.Debug.Log("Node depth: " + node.Depth + ", target depth: " + targetDepth + ", dist to bsph: " + dist + ", float target depth: " + fTargetDepth + " node cv: " + node.CentralVertex);
+		
+				if(node.Depth < targetDepth && node.Depth + 1 < maxDepth) {
+					SplitNode(root, node);
+					RecursiveSplitNodeAtPosition(root, node, viewerPosition, a, multiplier, maxDepth);
+				}
+			}
+			else {
+				for(int i = 0; i < 2; i++) {
+					RecursiveSplitNodeAtPosition(root, node.Children[i], viewerPosition, a, multiplier, maxDepth);
+				}
+			}
 		}
 
 		public static void AddTetToDictionary(Root root, Node node) {
@@ -450,7 +493,7 @@ namespace DMC {
 			return Units;
 		}
 
-		public static UnityEngine.Mesh PolyganiseNode(List<MCBarycentricUnit> PrecomputedMesh, DMC.Node node, bool ReverseWindingOrder) {
+		public static UnityEngine.Mesh PolyganiseNode(List<MCBarycentricUnit> PrecomputedMesh, DMC.Node node) {
 			List<Strucs.GridCell> MCCells = ConvertVolumeMeshToCartesian(PrecomputedMesh, node);
 
 			List<Vector3> Vertices = new List<Vector3>();
