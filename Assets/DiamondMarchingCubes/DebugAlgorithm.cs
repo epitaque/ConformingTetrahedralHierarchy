@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 namespace DMC {
 	public static class DebugAlgorithm {
@@ -133,15 +134,12 @@ namespace DMC {
 				node.BoundRadius = Vector3.Distance(node.HVertices[0], node.HVertices[1]) / 2f;
 				node.CentralVertex = Utility.FindMidpoint(node.Vertices[0], node.Vertices[1]);
 				AddTetToDictionary(root, node);
-				if(!RecursiveSplitNode(depth_, node, root, 3)) {
-					root.IsValid = false;	
-				};
 				root.Children[i] = node;
 			}
 
 			return root;
 		}
-		public static bool RecursiveSplitNode(int n, Node toSplit, Root root, int childToSplit) {
+		/*public static bool RecursiveSplitNode(int n, Node toSplit, Root root, int childToSplit) {
 			bool returning = true;
 			if(n <= 0) return true;
 			int f = childToSplit;
@@ -157,20 +155,106 @@ namespace DMC {
 				returning = false;
 			}
 			return returning;
+		}*/
+
+		public delegate float FindTargetDepth(Node node);
+		public static float DefaultFindTargetDepth(Vector3 position, Node node) {
+				float mapSize = 1024f;
+				float maxDepth = 22f;
+				float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * mapSize), position) - (node.BoundRadius * mapSize), 0, float.MaxValue);
+
+				float targetDepth = (6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
+				return Mathf.Clamp(targetDepth, 1, maxDepth);
 		}
 
-		// 3rd parameter prevents infinite recursive calls
+		public static void Adapt(Root root, Vector3 position, AdaptResult result) {
+			Adapt(root, position, (Node node) => DebugAlgorithm.DefaultFindTargetDepth(position, node), result);
+		}
+		public static void Adapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, AdaptResult result) {
+			result.SplitListLength = 0;
+			result.CoarsenListLength = 0;
 
-		public static void DynamicRefine(Root root, Vector3 position, int MaxDepth, float a) {
-			List<Node> SplitList = new List<Node>();
-			List<Node> CoarsenList = new List<Node>();
-
-
+			for(int i = 0; i < root.Children.Length; i++) {
+				RecursiveAdapt(root, root.Children[i], findTargetDepth, result);
+			}
 		}
 
-		//private static void DynamicRefine(Root root, Node node, List<Node> SplitList, List<Node> CoarsenList)
+		private static void RecursiveAdapt(Root root, Node node, FindTargetDepth findTargetDepth, AdaptResult result) {
+			if(node.IsLeaf) {
+				int targetDepth = (int)findTargetDepth(node);
+				//UnityEngine.Debug.Log("Node depth: " + node.Depth + ", target depth: " + targetDepth + ", dist to bsph: " + dist + ", float target depth: " + fTargetDepth + " node cv: " + node.CentralVertex);
+		
+				if(node.Depth < targetDepth) {
+					SplitNode(root, node);
+					RecursiveAdapt(root, node, findTargetDepth, result);
+				}
+				else if(node.Depth > targetDepth) {
+					// check if diamond is coarsenable without breaking conformity
+					bool coarsenable = true;
 
-		public static bool SplitNode(Root root, Node node, uint doNotSplit = uint.MaxValue) {
+					if(!root.EdgeToTetList.ContainsKey(node.CentralVertex)) {
+						Debug.Log("got here 0");
+						return;
+					}
+
+					List<Node> neighbors_ = root.EdgeToTetList[node.CentralVertex];
+					List<Node> diamondTets = new List<Node>();
+					foreach(Node n in neighbors_) {
+						Debug.Log("got here");
+						if(n.CentralVertex == node.CentralVertex) {
+							diamondTets.Add(n);
+						}
+					}
+					for(int j = 0; j < diamondTets.Count; j++) {
+						Node n = diamondTets[j];
+
+						List<Node> neighbors = FindNeighboringNodes(root, n);
+
+						foreach(Node neighbor in neighbors) {
+							if(neighbor.CentralVertex == n.CentralVertex) {
+								continue;
+							}
+							if(neighbor.Depth == n.Depth - 1) {
+								coarsenable = false;
+								goto Done;
+							}
+						}
+					}
+
+					goto Done;
+					Done: 
+						if(coarsenable) {
+							node.Parent.IsLeaf = true;
+							node.Parent.Children = null;
+							for(int i = 0; i < diamondTets.Count; i++) {
+								result.CoarsenList[result.CoarsenListLength] = diamondTets[i];
+								result.CoarsenListLength++;
+							}
+						}
+				}
+			}
+			else {
+				for(int i = 0; i < 2; i++) {
+					RecursiveAdapt(root, node.Children[i], findTargetDepth, result);
+				}
+			}
+		}
+
+		public static List<Node> FindNeighboringNodes(Root root, Node node) {
+			List<Node> neighboringNodes = new List<Node>();
+
+			for(int i = 0; i < 6; i++) {
+				Vector3 edgeMidpoint = Utility.FindMidpoint(node.Vertices[Lookups.EdgePairs[i, 0]], node.Vertices[Lookups.EdgePairs[i, 1]]);
+
+				if(root.EdgeToTetList.ContainsKey(edgeMidpoint)) {
+					neighboringNodes = neighboringNodes.Union(root.EdgeToTetList[edgeMidpoint]).ToList();
+				}
+			}
+
+			return neighboringNodes;
+		}
+
+		public static bool SplitNode(Root root, Node node) {
 			UnityEngine.Debug.Log("SplitNode called");
 
 			node.Children = new Node[2];
@@ -191,29 +275,6 @@ namespace DMC {
 
 			//UnityEngine.Debug.Log("D" + node.Depth + ": Empircal longest edge: " + dist_longest + ", 0-1 edge distance: " + dist_01);
 
-			// Ensure conforming by checking neighboring tetrahedra
-			/*for(int i = 0; i < 6; i++) {
-
-				Vector3 edgeMidpoint = Utility.FindMidpoint(node.Vertices[Lookups.EdgePairs[i, 0]], node.Vertices[Lookups.EdgePairs[i, 1]]);
-
-				if(root.EdgeToTetList.ContainsKey(edgeMidpoint)) {
-					List<Node> neighboringTetrahedra = root.EdgeToTetList[edgeMidpoint];
-					for(int j = 0; j < neighboringTetrahedra.Count; j++) {
-						Node neighbor = neighboringTetrahedra[j];
-						if(neighbor.Number == node.Number || neighbor.Number == doNotSplit || !neighbor.IsLeaf) {
-							continue;
-						}
-						if(neighbor.Depth == node.Depth + 1) {
-							SplitNode(root, neighbor, node.Number);
-						}
-						// neighbor and node form diamond, must split both
-						else if(neighbor.CentralVertex == node.CentralVertex) {
-							SplitNode(root, neighbor, node.Number);
-						}
-					}
-				}
-			}*/
-
 			// Construct new tetrahedra
 			Vector3[] CachedVertices = new Vector3[5];
 			for(int i = 0; i < 4; i++) {
@@ -230,6 +291,7 @@ namespace DMC {
 				child.IsLeaf = true;
 				child.TetrahedronType = (node.TetrahedronType + 1) % 3;
 				child.ReversedWindingOrder = node.ReversedWindingOrder;
+				child.Parent = node;
 				if(node.TetrahedronType == 0 && i == 1 ||
 				   node.TetrahedronType == 2 && i == 1) {
 					child.ReversedWindingOrder = !node.ReversedWindingOrder;
@@ -246,38 +308,28 @@ namespace DMC {
 				child.BoundRadius = Vector3.Distance(child.HVertices[0], child.HVertices[1]) / 2f;
 				child.CentralVertex = Utility.FindMidpoint(child.HVertices[0], child.HVertices[1]);
 				node.Children[i] = child;
+				AddTetToDictionary(root, child);
 			}
+
+			// Ensure conforming by checking neighboring tetrahedra
+			List<Node> neighboringTetrahedra = FindNeighboringNodes(root, node);
+			for(int j = 0; j < neighboringTetrahedra.Count; j++) {
+				Node neighbor = neighboringTetrahedra[j];
+				if(neighbor.Number == node.Number || !neighbor.IsLeaf) {
+					continue;
+				}
+				if(neighbor.Depth == node.Depth + 1) {
+					SplitNode(root, neighbor);
+				}
+				// neighbor and node form diamond, must split both
+				else if(neighbor.CentralVertex == node.CentralVertex) {
+					SplitNode(root, neighbor);
+				}
+			}
+
+
 
 			return dist_01 == dist_longest;
-		}
-
-		// higher a = lower detail
-		public static void SplitTreeAtPosition(Root root, Vector3 viewerPosition, float a, float multiplier, int maxDepth) {
-			for(int i = 0; i < root.Children.Length; i++) {
-				RecursiveSplitNodeAtPosition(root, root.Children[i], viewerPosition, a, multiplier, maxDepth);
-			}
-		}
-
-		public static void RecursiveSplitNodeAtPosition(Root root, Node node, Vector3 viewerPosition, float a, float multiplier, int maxDepth) {
-			if(node.IsLeaf) {
-				float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * multiplier), viewerPosition) - (node.BoundRadius * multiplier), 0, float.MaxValue);
-				//float fTargetDepth = Mathf.Log(dist, a);
-
-				float fTargetDepth = (6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
-				int targetDepth =  (int) fTargetDepth; //(int)Mathf.Round(fTargetDepth);
-
-				UnityEngine.Debug.Log("Node depth: " + node.Depth + ", target depth: " + targetDepth + ", dist to bsph: " + dist + ", float target depth: " + fTargetDepth + " node cv: " + node.CentralVertex);
-		
-				if(node.Depth < targetDepth && node.Depth + 1 < maxDepth) {
-					SplitNode(root, node);
-					RecursiveSplitNodeAtPosition(root, node, viewerPosition, a, multiplier, maxDepth);
-				}
-			}
-			else {
-				for(int i = 0; i < 2; i++) {
-					RecursiveSplitNodeAtPosition(root, node.Children[i], viewerPosition, a, multiplier, maxDepth);
-				}
-			}
 		}
 
 		public static void AddTetToDictionary(Root root, Node node) {
@@ -452,7 +504,7 @@ namespace DMC {
 			hex.IsLeaf = false;
 		}
 
-		public static List<MCBarycentricUnit> CreatePrecomputedVolumeMesh(List<Hexahedron> Hexahedra, DMC.Node Tetrahedron) {
+		public static List<MCBarycentricUnit> ConvertHexahedraToBarycentric(List<Hexahedron> Hexahedra, DMC.Node Tetrahedron) {
 			List<MCBarycentricUnit> VolumeMesh = new List<MCBarycentricUnit>();
 
 			float a = Hexahedra.Count / 4;
@@ -475,6 +527,14 @@ namespace DMC {
 				VolumeMesh.Add(u);
 			}
 			return VolumeMesh;
+		}
+		public static List<MCBarycentricUnit> CreatePrecomputedVolumeMesh(DMC.Node Tetrahedron) {
+			DMC.Hexahedron[] rootHexahedra = ExtractHexahedra(Tetrahedron);
+			List<DMC.Hexahedron> subdividedHexahedra = new List<DMC.Hexahedron>();
+			for(int i = 0; i < 4; i++) {
+				subdividedHexahedra.AddRange(DMC.DebugAlgorithm.GenerateSubdividedHexahedronList(rootHexahedra[i], 2));
+			}
+			return ConvertHexahedraToBarycentric(subdividedHexahedra, Tetrahedron);
 		}
 
 		public static List<Strucs.GridCell> ConvertVolumeMeshToCartesian(List<MCBarycentricUnit> PrecomputedMesh, DMC.Node Tetrahedron) {

@@ -161,6 +161,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MeshPrefab: {fileID: 1507587811}
+  Viewer: {fileID: 934094399}
 --- !u!1 &934094399
 GameObject:
   m_ObjectHideFlags: 0
@@ -280,7 +281,7 @@ MeshRenderer:
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
   m_Materials:
-  - {fileID: 2100000, guid: 558401376f4da714184abf62e4b77bd9, type: 2}
+  - {fileID: 2100000, guid: 03026b0549530814d9c7bec98dbf62ab, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

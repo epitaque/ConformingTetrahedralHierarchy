@@ -14,6 +14,8 @@ namespace DMC {
 		public uint Number; // used as UID system
 		public bool IsLeaf;
 		public bool ReversedWindingOrder;
+		public GameObject UnityObject;
+		public Node Parent;
 	}
 
 	public class Root {
@@ -39,5 +41,10 @@ namespace DMC {
 		public Vector3[] CartesianCoords;
 		public float[] Values;
 	}
-
+	public class AdaptResult {
+		public Node[] SplitList;
+		public int SplitListLength;
+		public Node[] CoarsenList;
+		public int CoarsenListLength;
+	}
 }
