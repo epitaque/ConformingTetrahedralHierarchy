@@ -124,7 +124,7 @@ public static class Utility {
         return s;
     }
     public static Vector3 FindMidpoint(Vector3 A, Vector3 B) {
-        return (A + B) / 2;
+        return (A + B) / 2f;
     }
     public static Vector3 Lerp(float isolevel, Strucs.Point point1, Strucs.Point point2) {
         if (Mathf.Abs(isolevel-point1.Density) < 0.00001)
@@ -141,6 +141,46 @@ public static class Utility {
         float r = 1.8f;
         return (float)noise.Evaluate(position.x * r, position.y * r, position.z * r);
     }
+    public static Sphere CalculateBoundingSphere(DMC.Node node) {
+        Sphere s = new Sphere();
+
+        Vector3 minExt = node.Vertices[0];
+        Vector3 maxExt = node.Vertices[0];
+        for(int i = 1; i < 4; i++) {
+            minExt = Min(minExt, node.Vertices[i]);
+            maxExt = Max(maxExt, node.Vertices[i]);
+        }
+
+        s.Center = new Vector3(0.5f * (minExt.x + maxExt.x), 0.5f * (minExt.y + maxExt.y), 0.5f * (minExt.z + maxExt.z));
+
+        float maxDist = 0f;
+        foreach(Vector3 p in node.Vertices) {
+            float dist = Vector3.Distance(p, s.Center);
+            if(dist > maxDist) {
+                maxDist = dist;
+            }
+        }
+        s.Radius = maxDist / 2f;
+
+        return s;
+    }
+    private static Vector3 Min(Vector3 A, Vector3 B) {
+        if(A.x > B.x) A.x = B.x;
+        if(A.y > B.y) A.y = B.y;
+        if(A.z > B.z) A.z = B.z;
+        return A;
+    }
+    private static Vector3 Max(Vector3 A, Vector3 B) {
+        if(A.x < B.x) A.x = B.x;
+        if(A.y < B.y) A.y = B.y;
+        if(A.z < B.z) A.z = B.z;
+        return A;
+    }
+}
+
+public class Sphere {
+    public Vector3 Center;
+    public float Radius;
 }
 
 namespace Strucs {

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
-using UnityEngine;
+using System.Collections;
 using System.Linq;
+using UnityEngine;
 
 namespace DMC {
 	public static class DebugAlgorithm {
@@ -110,14 +111,16 @@ namespace DMC {
 		public static Root CreateHierarchy(Vector3 PlayerLocation) {
 			Root root = new Root();
 
-			root.EdgeToTetList = new Dictionary<Vector3, List<Node>>();
+			root.EdgeToNodeList = new Dictionary<Vector3, List<Node>>();
+			root.FaceToNodeList = new Dictionary<Vector3, List<Node>>();
+			root.Nodes = new Dictionary<uint, Node>();
 
 			root.Children = new Node[6];
 			root.IsValid = true;
 			for(int i = 0; i < 6; i++) {
 				Node node = new Node();
-				node.Number = mostRecentTetrahedronCount;
-				mostRecentTetrahedronCount++;
+				node.Number = mostRecentTetrahedronCount; mostRecentTetrahedronCount++;
+				root.Nodes.Add(node.Number, node);
 				node.Depth = 0;
 				node.IsLeaf = true;
 				node.HVertices = new Vector3[4];
@@ -133,8 +136,9 @@ namespace DMC {
 				}
 				node.BoundRadius = Vector3.Distance(node.HVertices[0], node.HVertices[1]) / 2f;
 				node.CentralVertex = Utility.FindMidpoint(node.Vertices[0], node.Vertices[1]);
-				AddTetToDictionary(root, node);
+				AddToDictionaries(root, node);
 				root.Children[i] = node;
+				node.BoundingSphere = Utility.CalculateBoundingSphere(node);
 			}
 
 			return root;
@@ -182,13 +186,13 @@ namespace DMC {
 		private static void RecursiveAdapt(Root root, Node node, FindTargetDepth findTargetDepth, AdaptResult result) {
 			if(node.IsLeaf) {
 				int targetDepth = (int)findTargetDepth(node);
-				//UnityEngine.Debug.Log("Node depth: " + node.Depth + ", target depth: " + targetDepth + ", dist to bsph: " + dist + ", float target depth: " + fTargetDepth + " node cv: " + node.CentralVertex);
+//UnityEngine.Debug.Log("Node depth: " + node.Depth + ", target depth: " + targetDepth + " node cv: " + node.CentralVertex);
 		
 				if(node.Depth < targetDepth) {
 					SplitNode(root, node);
 					RecursiveAdapt(root, node, findTargetDepth, result);
 				}
-				else if(node.Depth > targetDepth) {
+				/*else if(node.Depth > targetDepth) {
 					// check if diamond is coarsenable without breaking conformity
 					bool coarsenable = true;
 
@@ -231,7 +235,7 @@ namespace DMC {
 								result.CoarsenListLength++;
 							}
 						}
-				}
+				}*/
 			}
 			else {
 				for(int i = 0; i < 2; i++) {
@@ -243,11 +247,11 @@ namespace DMC {
 		public static List<Node> FindNeighboringNodes(Root root, Node node) {
 			List<Node> neighboringNodes = new List<Node>();
 
-			for(int i = 0; i < 6; i++) {
-				Vector3 edgeMidpoint = Utility.FindMidpoint(node.Vertices[Lookups.EdgePairs[i, 0]], node.Vertices[Lookups.EdgePairs[i, 1]]);
+			for(int i = 0; i < 4; i++) {
+				Vector3 centroid = FindCentroid(node, i);
 
-				if(root.EdgeToTetList.ContainsKey(edgeMidpoint)) {
-					neighboringNodes = neighboringNodes.Union(root.EdgeToTetList[edgeMidpoint]).ToList();
+				if(root.FaceToNodeList.ContainsKey(centroid)) {
+					neighboringNodes = neighboringNodes.Union(root.FaceToNodeList[centroid]).ToList();
 				}
 			}
 
@@ -255,12 +259,9 @@ namespace DMC {
 		}
 
 		public static bool SplitNode(Root root, Node node) {
-			UnityEngine.Debug.Log("SplitNode called");
-
 			node.Children = new Node[2];
 			node.IsLeaf = false;
 
-			//
 			float dist_longest = 0;
 			int pair;
 			for(int i = 0; i < 6; i++) {
@@ -285,6 +286,7 @@ namespace DMC {
 				Node child = new Node();
 				child.Number = mostRecentTetrahedronCount;
 				mostRecentTetrahedronCount++;
+				root.Nodes.Add(child.Number, child);
 				child.HVertices = new Vector3[4];
 				child.Vertices = new Vector3[4];
 				child.Depth = node.Depth + 1;
@@ -307,12 +309,13 @@ namespace DMC {
 				}
 				child.BoundRadius = Vector3.Distance(child.HVertices[0], child.HVertices[1]) / 2f;
 				child.CentralVertex = Utility.FindMidpoint(child.HVertices[0], child.HVertices[1]);
+				child.BoundingSphere = Utility.CalculateBoundingSphere(child);
 				node.Children[i] = child;
-				AddTetToDictionary(root, child);
+				AddToDictionaries(root, child);
 			}
 
 			// Ensure conforming by checking neighboring tetrahedra
-			List<Node> neighboringTetrahedra = FindNeighboringNodes(root, node);
+			/*List<Node> neighboringTetrahedra = FindNeighboringNodes(root, node);
 			for(int j = 0; j < neighboringTetrahedra.Count; j++) {
 				Node neighbor = neighboringTetrahedra[j];
 				if(neighbor.Number == node.Number || !neighbor.IsLeaf) {
@@ -325,26 +328,35 @@ namespace DMC {
 				else if(neighbor.CentralVertex == node.CentralVertex) {
 					SplitNode(root, neighbor);
 				}
-			}
-
-
+			}*/
 
 			return dist_01 == dist_longest;
 		}
 
-		public static void AddTetToDictionary(Root root, Node node) {
-			for(int j = 0; j < 6; j++) {
-				Vector3 edgeMidpoint = Utility.FindMidpoint(node.Vertices[Lookups.EdgePairs[j, 0]], node.Vertices[Lookups.EdgePairs[j, 1]]);
-				if(root.EdgeToTetList.ContainsKey(edgeMidpoint)) {
-					root.EdgeToTetList[edgeMidpoint].Add(node);
+		public static void AddToDictionaries(Root Root, Node Node) {
+			// Update EdgeToNodeList
+			for(int i = 0; i < 4; i++) {
+				Vector3 edgeMidpoint = Utility.FindMidpoint(Node.Vertices[Lookups.EdgePairs[i, 0]], Node.Vertices[Lookups.EdgePairs[i, 1]]);
+				if(!Root.EdgeToNodeList.ContainsKey(edgeMidpoint)) {
+					Root.EdgeToNodeList.Add(edgeMidpoint, new List<Node>());
 				}
-				else {
-					List<Node> tetList = new List<Node>();
-					tetList.Add(node);
-					root.EdgeToTetList.Add(edgeMidpoint, tetList);
-				}
+				Root.EdgeToNodeList[edgeMidpoint].Add(Node);
 			}
 
+			// Update FaceToNodeList
+			for(int i = 0; i < 4; i++) {
+				Vector3 centroid = FindCentroid(Node, i);
+				if(!Root.FaceToNodeList.ContainsKey(centroid)) {
+					Root.FaceToNodeList.Add(centroid, new List<Node>());
+				}
+				Root.FaceToNodeList[centroid].Add(Node);
+			}
+		}
+
+		public static Vector3 FindCentroid(Node Node, int FaceNumber) {
+			return (Node.Vertices[Lookups.TetrahedronFaces[FaceNumber, 0]] + 
+				    Node.Vertices[Lookups.TetrahedronFaces[FaceNumber, 1]] +
+				    Node.Vertices[Lookups.TetrahedronFaces[FaceNumber, 2]] ) / 3;
 		}
 
 		public static Hexahedron[] ExtractHexahedra(Node node) {

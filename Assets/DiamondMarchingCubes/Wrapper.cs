@@ -5,19 +5,16 @@ using UnityEngine;
 
 namespace DMC {
 	public class Wrapper {
-		Root Hierarchy;
-		List<DMC.MCBarycentricUnit> PrecomputedVolumeMesh;
-		AdaptResult Result;
+		public Root Hierarchy;
+		public Hashtable UnityObjects;
+		public List<Node> LoadedLeafNodes;
 
-		GameObject MeshPrefab;
-		Transform Parent;
-
-		float WorldSize;
-		int MaxDepth;
-
-		Hashtable UnityObjects;
-
-		List<Node> LoadedLeafNodes;
+		private List<DMC.MCBarycentricUnit> PrecomputedVolumeMesh;
+		private AdaptResult Result;
+		private GameObject MeshPrefab;
+		private Transform Parent;
+		private float WorldSize;
+		private int MaxDepth;
 
 		public Wrapper(float worldSize, Vector3 startingPosition, Transform parent, GameObject meshPrefab, int maxDepth) {
 			Parent = parent;
@@ -41,6 +38,19 @@ namespace DMC {
 				float clamped = Mathf.Clamp(targetDepth, 1f, (float)MaxDepth);
 				return (int)clamped;
 		}
+		public float FindTargetDepth2(Vector3 position, Node node) {
+			float targetDepth = 0;
+			position = new Vector3(0, 0, 0);
+			float dist = Vector3.Distance(node.BoundingSphere.Center, position) - node.BoundingSphere.Radius;
+			dist = Mathf.Clamp(dist, 0, float.MaxValue);
+			if(dist < 0.1f) {
+				targetDepth = 6;
+			}
+			UnityEngine.Debug.Log(node.Number + ": Node depth: " + node.Depth + ", target depth: " + targetDepth + 
+			", distance: " + (dist + node.BoundRadius) + " node cv: " + node.CentralVertex + 
+			"bound radius: " + node.BoundingSphere.Radius + "bounding sphere center: " + node.BoundingSphere.Center);
+			return targetDepth;
+		}
 
 		public void InitializeHierarchy() {
 			Hierarchy = DMC.DebugAlgorithm.Run(new Vector3(0, 0, 0));
@@ -48,7 +58,7 @@ namespace DMC {
 		}
 
 		public void Update(Vector3 viewerPosition) {
-			DMC.DebugAlgorithm.Adapt(Hierarchy, viewerPosition, (Node node) => FindTargetDepth(viewerPosition, node), Result);
+			DMC.DebugAlgorithm.Adapt(Hierarchy, viewerPosition, (Node node) => FindTargetDepth2(viewerPosition, node), Result);
 			Meshify();
 		}
 
@@ -85,8 +95,10 @@ namespace DMC {
 
 		public void MeshifyNode(DMC.Node node) {
 			GameObject clone = Object.Instantiate(MeshPrefab, new Vector3(0, 0, 0), Quaternion.identity);
-			clone.GetComponent<MeshRenderer>().material.color = Utility.SinColor(node.Depth * 3f);
+			Color c = Utility.SinColor(node.Depth * 3f);
+			clone.GetComponent<MeshRenderer>().material.color = new Color(c.r, c.g, c.b, 0.2f);
 			clone.transform.localScale = Vector3.one * WorldSize;
+			clone.name = "Node " + node.Number + ", Depth " + node.Depth;
 
 			MeshFilter mf = clone.GetComponent<MeshFilter>();
 			mf.mesh = DMC.DebugAlgorithm.PolyganiseNode(PrecomputedVolumeMesh, node);
