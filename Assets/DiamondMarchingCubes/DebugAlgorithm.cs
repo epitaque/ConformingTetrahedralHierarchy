@@ -114,11 +114,13 @@ namespace DMC {
 			root.EdgeToNodeList = new Dictionary<Vector3, List<Node>>();
 			root.FaceToNodeList = new Dictionary<Vector3, List<Node>>();
 			root.Nodes = new Dictionary<uint, Node>();
+			root.LeafNodes = new List<Node>();
 
 			root.Children = new Node[6];
 			root.IsValid = true;
 			for(int i = 0; i < 6; i++) {
 				Node node = new Node();
+				root.LeafNodes.Add(node);
 				node.Number = mostRecentTetrahedronCount; mostRecentTetrahedronCount++;
 				root.Nodes.Add(node.Number, node);
 				node.Depth = 0;
@@ -165,68 +167,42 @@ namespace DMC {
 				RecursiveAdapt(root, root.Children[i], findTargetDepth, result);
 			}
 		}
+		// Traverses to each leaf node and sees if it is the correct target depth
+		// If it is too refined, it will try to collapse
+		// If it is too coarse, the node will split
+		// If false is returned, adaption still needs to be done
+		public static bool Adapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, AdaptResult result) {
+			foreach(Node leaf in root.LeafNodes) {
 
-		private static void RecursiveAdapt(Root root, Node node, FindTargetDepth findTargetDepth, AdaptResult result) {
+			}
+		}
+
+		private static bool RecursiveAdapt(Root root, Node node, FindTargetDepth findTargetDepth, AdaptResult result) {
 			if(node.IsLeaf) {
 				int targetDepth = (int)findTargetDepth(node);
-//UnityEngine.Debug.Log("Node depth: " + node.Depth + ", target depth: " + targetDepth + " node cv: " + node.CentralVertex);
-		
-				if(node.Depth < targetDepth) {
-					SplitNode(root, node);
-					RecursiveAdapt(root, node, findTargetDepth, result);
+				if(node.Depth < targetDepth) { // node needs to have higher depth (be more refined)
+					SplitNode(root, node);	   // so split the node
 				}
-				/*else if(node.Depth > targetDepth) {
-					// check if diamond is coarsenable without breaking conformity
-					bool coarsenable = true;
+				else if(node.Depth > targetDepth) { // node depth is too large
+					Node sibling = FindSiblingNode(node);	// get sibling node
+					if(sibling.Depth > targetDepth) // sibling depth is also too large, so coarsen
+					{
 
-					if(!root.EdgeToTetList.ContainsKey(node.CentralVertex)) {
-						Debug.Log("got here 0");
-						return;
 					}
-
-					List<Node> neighbors_ = root.EdgeToTetList[node.CentralVertex];
-					List<Node> diamondTets = new List<Node>();
-					foreach(Node n in neighbors_) {
-						Debug.Log("got here");
-						if(n.CentralVertex == node.CentralVertex) {
-							diamondTets.Add(n);
-						}
-					}
-					for(int j = 0; j < diamondTets.Count; j++) {
-						Node n = diamondTets[j];
-
-						List<Node> neighbors = FindNeighboringNodes(root, n);
-
-						foreach(Node neighbor in neighbors) {
-							if(neighbor.CentralVertex == n.CentralVertex) {
-								continue;
-							}
-							if(neighbor.Depth == n.Depth - 1) {
-								coarsenable = false;
-								goto Done;
-							}
-						}
-					}
-
-					goto Done;
-					Done: 
-						if(coarsenable) {
-							node.Parent.IsLeaf = true;
-							node.Parent.Children = null;
-							for(int i = 0; i < diamondTets.Count; i++) {
-								result.CoarsenList[result.CoarsenListLength] = diamondTets[i];
-								result.CoarsenListLength++;
-							}
-						}
-				}*/
+				}
 			}
 			else {
-				for(int i = 0; i < 2; i++) {
-					RecursiveAdapt(root, node.Children[i], findTargetDepth, result);
+				foreach(Node child in node.Children) {
+					RecursiveAdapt(root, child, findTargetDepth, result);
 				}
 			}
 		}
 
+		public static Node FindSiblingNode(Node node) {
+			Node[] siblings = node.Parent.Children;
+			return siblings[0].Number == node.Number ? siblings[1] : siblings[0];
+		}
+ 
 		public static List<Node> FindNeighboringNodes(Root root, Node node) {
 			List<Node> neighboringNodes = new List<Node>();
 
@@ -281,6 +257,12 @@ namespace DMC {
 				child.BoundingSphere = Utility.CalculateBoundingSphere(child);
 				node.Children[i] = child;
 				AddToDictionaries(root, child);
+			}
+		}
+
+		public static void CoarsenNodes(Root root, Node parent) {
+			foreach(Node child in parent.Children) {
+				root.Nodes.Remove(child.Number);
 			}
 		}
 

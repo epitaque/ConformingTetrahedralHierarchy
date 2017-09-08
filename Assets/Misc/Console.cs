@@ -38,6 +38,10 @@ public class Console : MonoBehaviour {
             UnityEngine.Debug.Log("HighlightNeighbors called with argument " + tokens[1]);
             Debugger.HighlightNeighbors(tokens[1]);
         }
+        else if(command == "hs") {
+            UnityEngine.Debug.Log("HighlightSphere called with argument " + tokens[1]);
+            Debugger.HighlightSphere(tokens[1]);
+        }
         else {
             PrintString("ERROR: Invalid command");
         }

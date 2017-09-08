@@ -10,6 +10,7 @@ namespace DMC {
         private List<GameObject> PreviouslyHighlightedObjects;
         private List<Line> Gizmos;
         private List<GameObject> NodeMeshes;
+        private List<Sphere> HighlightedBoundingSpheres;
         private GameObject MeshPrefab;
 
         class Line {
@@ -25,8 +26,26 @@ namespace DMC {
             this.PreviouslyHighlightedObjects = new List<GameObject>();
             this.Gizmos = new List<Line>();
             this.NodeMeshes = new List<GameObject>();
+            this.HighlightedBoundingSpheres = new List<Sphere>();
             this.WorldSize = WorldSize;
             this.MeshPrefab = MeshPrefab;
+        }
+
+        public Node StringToNode(string nodeNumberStr) {
+            uint nodeNumber;
+            if(uint.TryParse(nodeNumberStr, out nodeNumber)) {
+                if(DMCWrapper.Hierarchy.Nodes.ContainsKey(nodeNumber)) {
+                    Console.PrintString("INFO: Found node " + nodeNumber);
+                    return DMCWrapper.Hierarchy.Nodes[nodeNumber];
+                }
+                else {
+                    Console.PrintString("ERROR: Unable to find node with ID " + nodeNumber);
+                }
+            }
+            else {
+                Console.PrintString("ERROR: Unable to parse ID " + nodeNumber);
+            }
+            return null;
         }
 
         public void HighlightNeighbors(string nodeNumberStr) {
@@ -88,10 +107,18 @@ namespace DMC {
             NodeMeshes.Add(mobj);
         }
 
+        public void HighlightBoundingSphere(Node node) {
+            this.HighlightedBoundingSpheres.Add(node.BoundingSphere);
+        }
+
         public void DrawGizmos() {
             foreach(Line l in Gizmos) {
                 UnityEngine.Gizmos.color = l.Color;
                 UnityEngine.Gizmos.DrawLine(l.A, l.B);
+            }
+            foreach(Sphere s in HighlightedBoundingSpheres) {
+                UnityEngine.Gizmos.color = new Color(0.5f, 0.3f, 0.0f, 0.5f);
+                UnityEngine.Gizmos.DrawSphere(s.Center, s.Radius);
             }
         }
 

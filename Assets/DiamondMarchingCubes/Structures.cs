@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Collections;
+using System.Collections.Concurrent;
 using UnityEngine;
 
 namespace DMC {
@@ -23,8 +23,7 @@ namespace DMC {
 	public class Root {
 		public Node[] Children;
 		public Dictionary<uint, Node> Nodes; // Index: Node number | Value: Node
-		public Dictionary<Vector3, List<Node>> EdgeToNodeList; // Index: Edge Midpoint | Value: All nodes sharing that edge
-		public Dictionary<Vector3, List<Node>> FaceToNodeList; // Index: Centroid of face | Value: All nodes sharing that face
+		public Dictionary<Vector3, ConcurrentBag<Node>> FaceToNodeList; // Index: Centroid of face | Value: All nodes sharing that face
 		public bool IsValid; // true if every split uses the longest edge
 	}
 
