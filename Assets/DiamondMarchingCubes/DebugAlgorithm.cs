@@ -143,23 +143,6 @@ namespace DMC {
 
 			return root;
 		}
-		/*public static bool RecursiveSplitNode(int n, Node toSplit, Root root, int childToSplit) {
-			bool returning = true;
-			if(n <= 0) return true;
-			int f = childToSplit;
-			if(childToSplit == 2) { 
-				f = UnityEngine.Random.Range(0, 2);
-			}
-			if(childToSplit == 3) {
-				f = 0;
-			}
-			if(!SplitNode(root, toSplit) 
-				| !RecursiveSplitNode(n - 1, toSplit.Children[0], root, childToSplit) 
-				| !RecursiveSplitNode(n - 1, toSplit.Children[1], root, childToSplit)) {
-				returning = false;
-			}
-			return returning;
-		}*/
 
 		public delegate float FindTargetDepth(Node node);
 		public static float DefaultFindTargetDepth(Vector3 position, Node node) {
@@ -258,23 +241,9 @@ namespace DMC {
 			return neighboringNodes;
 		}
 
-		public static bool SplitNode(Root root, Node node) {
+		public static void SplitNode(Root root, Node node) {
 			node.Children = new Node[2];
 			node.IsLeaf = false;
-
-			float dist_longest = 0;
-			int pair;
-			for(int i = 0; i < 6; i++) {
-				float dist = Vector3.Distance(node.HVertices[Lookups.EdgePairs[i,0]], node.HVertices[Lookups.EdgePairs[i,1]]);
-				if(dist > dist_longest) {
-					dist_longest = dist;
-					pair = i;
-				}
-			}
-
-			float dist_01 = Vector3.Distance(node.HVertices[0], node.HVertices[1]);
-
-			//UnityEngine.Debug.Log("D" + node.Depth + ": Empircal longest edge: " + dist_longest + ", 0-1 edge distance: " + dist_01);
 
 			// Construct new tetrahedra
 			Vector3[] CachedVertices = new Vector3[5];
@@ -313,24 +282,6 @@ namespace DMC {
 				node.Children[i] = child;
 				AddToDictionaries(root, child);
 			}
-
-			// Ensure conforming by checking neighboring tetrahedra
-			/*List<Node> neighboringTetrahedra = FindNeighboringNodes(root, node);
-			for(int j = 0; j < neighboringTetrahedra.Count; j++) {
-				Node neighbor = neighboringTetrahedra[j];
-				if(neighbor.Number == node.Number || !neighbor.IsLeaf) {
-					continue;
-				}
-				if(neighbor.Depth == node.Depth + 1) {
-					SplitNode(root, neighbor);
-				}
-				// neighbor and node form diamond, must split both
-				else if(neighbor.CentralVertex == node.CentralVertex) {
-					SplitNode(root, neighbor);
-				}
-			}*/
-
-			return dist_01 == dist_longest;
 		}
 
 		public static void AddToDictionaries(Root Root, Node Node) {
