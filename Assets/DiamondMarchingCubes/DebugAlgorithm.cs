@@ -5,11 +5,6 @@ using UnityEngine;
 
 namespace DMC {
 	public static class DebugAlgorithm {
-		public static int depth_ = 1;
-		public static int checks_ = 20;
-		public static int tetnum_ = 0;
-		public static int debugdepth_ = 22;
-
 		public static uint mostRecentTetrahedronCount = 0;
 
 		public static Root Run(Vector3 PlayerLocation) {
@@ -111,16 +106,13 @@ namespace DMC {
 		public static Root CreateHierarchy(Vector3 PlayerLocation) {
 			Root root = new Root();
 
-			root.EdgeToNodeList = new Dictionary<Vector3, List<Node>>();
 			root.FaceToNodeList = new Dictionary<Vector3, List<Node>>();
 			root.Nodes = new Dictionary<uint, Node>();
-			root.LeafNodes = new List<Node>();
 
 			root.Children = new Node[6];
 			root.IsValid = true;
 			for(int i = 0; i < 6; i++) {
 				Node node = new Node();
-				root.LeafNodes.Add(node);
 				node.Number = mostRecentTetrahedronCount; mostRecentTetrahedronCount++;
 				root.Nodes.Add(node.Number, node);
 				node.Depth = 0;
@@ -138,7 +130,7 @@ namespace DMC {
 				}
 				node.BoundRadius = Vector3.Distance(node.HVertices[0], node.HVertices[1]) / 2f;
 				node.CentralVertex = Utility.FindMidpoint(node.Vertices[0], node.Vertices[1]);
-				AddToDictionaries(root, node);
+				AddToDictionary(root, node);
 				root.Children[i] = node;
 				node.BoundingSphere = Utility.CalculateBoundingSphere(node);
 			}
@@ -148,57 +140,150 @@ namespace DMC {
 
 		public delegate float FindTargetDepth(Node node);
 		public static float DefaultFindTargetDepth(Vector3 position, Node node) {
-				float mapSize = 1024f;
+				float mapSize = 256f;
 				float maxDepth = 22f;
-				float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * mapSize), position) - (node.BoundRadius * mapSize), 0, float.MaxValue);
+				float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * mapSize), position) - (node.BoundRadius * mapSize * 1.2f), 0, float.MaxValue);
 
 				float targetDepth = (6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
 				return Mathf.Clamp(targetDepth, 1, maxDepth);
 		}
 
-		public static void Adapt(Root root, Vector3 position, AdaptResult result) {
-			Adapt(root, position, (Node node) => DebugAlgorithm.DefaultFindTargetDepth(position, node), result);
-		}
-		public static void Adapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, AdaptResult result) {
-			result.SplitListLength = 0;
-			result.CoarsenListLength = 0;
-
-			for(int i = 0; i < root.Children.Length; i++) {
-				RecursiveAdapt(root, root.Children[i], findTargetDepth, result);
+		public static void LoopAdapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, int MaxIterations = 20) {
+			// coarsen
+			int i = 0;
+			while(!Adapt(root, position, findTargetDepth, true)) {
+				if(i > MaxIterations) {
+					UnityEngine.Debug.LogWarning("WARNING: LoopAdapt Coarsen stage iterations maximum reached at " + MaxIterations);
+					break;
+				}
+				i++;
 			}
-		}
-		// Traverses to each leaf node and sees if it is the correct target depth
-		// If it is too refined, it will try to collapse
-		// If it is too coarse, the node will split
-		// If false is returned, adaption still needs to be done
-		public static bool Adapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, AdaptResult result) {
-			foreach(Node leaf in root.LeafNodes) {
+			UnityEngine.Debug.Log("LoopAdapt Coarsen stage finished at " + i + " iterations.");
 
+			// refine
+			i = 0;
+			while(!Adapt(root, position, findTargetDepth, false)) {
+				if(i > MaxIterations) {
+					UnityEngine.Debug.LogWarning("WARNING: LoopAdapt Refine stage iterations maximum reached at " + MaxIterations);
+					break;
+				}
+				i++;
 			}
+			UnityEngine.Debug.Log("LoopAdapt Refine stage finished at " + i + " iterations.");
+
 		}
 
-		private static bool RecursiveAdapt(Root root, Node node, FindTargetDepth findTargetDepth, AdaptResult result) {
+		// returns true if no further adaption is required
+		public static bool Adapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, bool coarsen) {
+			bool res = true;
+			foreach(Node child in root.Children) {
+				if(coarsen) {
+					if(!RecursiveAdaptCoarsen(root, child, findTargetDepth)) {
+						res = false;
+					}
+				}
+				else {
+					if(!RecursiveAdaptRefine(root, child, findTargetDepth)) {
+						res = false;
+					}
+				}
+			}
+			return res;
+		}
+		// returns true if no further adaption is required
+		private static bool RecursiveAdaptRefine(Root root, Node node, FindTargetDepth findTargetDepth) {
+			bool needsNoFurtherAdaption = true;
 			if(node.IsLeaf) {
 				int targetDepth = (int)findTargetDepth(node);
 				if(node.Depth < targetDepth) { // node needs to have higher depth (be more refined)
 					SplitNode(root, node);	   // so split the node
-				}
-				else if(node.Depth > targetDepth) { // node depth is too large
-					Node sibling = FindSiblingNode(node);	// get sibling node
-					if(sibling.Depth > targetDepth) // sibling depth is also too large, so coarsen
-					{
-
+					foreach(Node child in node.Children) {
+						targetDepth = (int)findTargetDepth(child);
+						if(child.Depth < targetDepth) {
+							needsNoFurtherAdaption = false;
+						}
 					}
 				}
 			}
 			else {
 				foreach(Node child in node.Children) {
-					RecursiveAdapt(root, child, findTargetDepth, result);
+					if(node.IsLeaf) break;
+					if(!RecursiveAdaptRefine(root, child, findTargetDepth)) {
+						needsNoFurtherAdaption = false;
+					}
 				}
 			}
+
+			return needsNoFurtherAdaption;
+		}
+		private static bool RecursiveAdaptCoarsen(Root root, Node node, FindTargetDepth findTargetDepth) {
+			bool needsNoFurtherAdaption = true;
+			if(node.IsLeaf) {
+				int targetDepth = (int)findTargetDepth(node);
+				if(node.Depth > targetDepth && node.Depth != 0) { // node depth is too large
+					Node sibling = FindSiblingNode(node);	// get sibling node
+					if(sibling.Depth > targetDepth && sibling.IsLeaf) {
+						Node parent = node.Parent;
+						CoarsenNodes(root, parent);
+						Node parentSibling = FindSiblingNode(parent);
+						if(parent.Depth > (int)findTargetDepth(parent) && parentSibling.Depth > (int)findTargetDepth(parentSibling)) {
+							needsNoFurtherAdaption = false;
+						}
+					}
+				}
+			}
+			else {
+				foreach(Node child in node.Children) {
+					if(node.IsLeaf) break;
+					if(!RecursiveAdaptCoarsen(root, child, findTargetDepth)) {
+						needsNoFurtherAdaption = false;
+					}
+				}
+			}
+
+			return needsNoFurtherAdaption;
 		}
 
+		public static void LoopMakeConforming(Root root, int MaxIterations = 20) {
+			int i = 0;
+			while(!MakeConforming(root)) {
+				if(i > MaxIterations) {
+					UnityEngine.Debug.LogWarning("WARNING: LoopMakeConforming iterations maximum reached at " + MaxIterations);
+					break;
+				}
+				i++;
+			}
+			UnityEngine.Debug.Log("LoopMakeConforming finished at " + i + " iterations.");
+		}
+		public static bool MakeConforming(Root root) {
+			bool res = true;
+			foreach(Node child in root.Children) {
+				if(!RecursiveMakeConforming(root, child)) {
+					res = false;
+				}
+			}
+			return res;
+		}
+		private static bool RecursiveMakeConforming(Root root, Node node) {
+			if(node.IsLeaf) {
+				// check to see if neighboring nodes have children of children
+				for(int i = 0; i < 4; i++) {
+					Vector3 centroid = FindCentroid(node, i);
+					foreach(Node neighbor in root.FaceToNodeList[centroid]) {
+						if(neighbor.IsLeaf) continue;
+						if(neighbor.Children[0].IsLeaf) continue;
+						else {
+							SplitNode(root, node);
+						}
+					}
+				}
+			}
+			return true;
+		}
+
+
 		public static Node FindSiblingNode(Node node) {
+			UnityEngine.Debug.Assert(node.Depth >= 1);
 			Node[] siblings = node.Parent.Children;
 			return siblings[0].Number == node.Number ? siblings[1] : siblings[0];
 		}
@@ -256,26 +341,24 @@ namespace DMC {
 				child.CentralVertex = Utility.FindMidpoint(child.HVertices[0], child.HVertices[1]);
 				child.BoundingSphere = Utility.CalculateBoundingSphere(child);
 				node.Children[i] = child;
-				AddToDictionaries(root, child);
+				AddToDictionary(root, child);
 			}
 		}
 
 		public static void CoarsenNodes(Root root, Node parent) {
 			foreach(Node child in parent.Children) {
+				UnityEngine.Debug.Assert(child.IsLeaf);
 				root.Nodes.Remove(child.Number);
+				for(int i = 0; i < 4; i++) {
+					Vector3 centroid = FindCentroid(child, i);
+					root.FaceToNodeList[centroid].Remove(child);
+				}
 			}
+			parent.Children = null;
+			parent.IsLeaf = true;
 		}
 
-		public static void AddToDictionaries(Root Root, Node Node) {
-			// Update EdgeToNodeList
-			for(int i = 0; i < 4; i++) {
-				Vector3 edgeMidpoint = Utility.FindMidpoint(Node.Vertices[Lookups.EdgePairs[i, 0]], Node.Vertices[Lookups.EdgePairs[i, 1]]);
-				if(!Root.EdgeToNodeList.ContainsKey(edgeMidpoint)) {
-					Root.EdgeToNodeList.Add(edgeMidpoint, new List<Node>());
-				}
-				Root.EdgeToNodeList[edgeMidpoint].Add(Node);
-			}
-
+		public static void AddToDictionary(Root Root, Node Node) {
 			// Update FaceToNodeList
 			for(int i = 0; i < 4; i++) {
 				Vector3 centroid = FindCentroid(Node, i);

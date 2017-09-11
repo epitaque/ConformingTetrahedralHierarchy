@@ -32,11 +32,11 @@ namespace DMC {
 			Update(startingPosition);
 		}
 		public float FindTargetDepth(Vector3 position, Node node) {
-				float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * WorldSize), position) - (node.BoundRadius * WorldSize), 0, float.MaxValue);
+			float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * WorldSize), position) - (node.BoundRadius * 1.3f * WorldSize), 0, float.MaxValue);
 
-				float targetDepth = (6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
-				float clamped = Mathf.Clamp(targetDepth, 1f, (float)MaxDepth);
-				return (int)clamped;
+			float targetDepth = 8.32f - 0.683f * Mathf.Log(dist + 1.5f, 2.718f);//(6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
+			float clamped = Mathf.Clamp(targetDepth, 1f, (float)MaxDepth);
+			return (int)clamped;
 		}
 		public float FindTargetDepth2(Vector3 position, Node node) {
 			float targetDepth = 0;
@@ -51,14 +51,21 @@ namespace DMC {
 			"bound radius: " + node.BoundingSphere.Radius + "bounding sphere center: " + node.BoundingSphere.Center);
 			return targetDepth;
 		}
-
+		public float FindTargetDepth3(Vector3 position, Node node) {
+			float targetDepth = 0;
+			float dist = Vector3.Distance(position, node.BoundingSphere.Center) - node.BoundingSphere.Radius * 1.1f;
+			dist = Mathf.Clamp(dist, 0, float.MaxValue);
+			targetDepth = (6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
+			float clamped = Mathf.Clamp(targetDepth, 1f, (float)MaxDepth);
+			return (int)clamped;
+		}
 		public void InitializeHierarchy() {
 			Hierarchy = DMC.DebugAlgorithm.Run(new Vector3(0, 0, 0));
 			PrecomputedVolumeMesh = DMC.DebugAlgorithm.CreatePrecomputedVolumeMesh(Hierarchy.Children[0]);
 		}
 
 		public void Update(Vector3 viewerPosition) {
-			DMC.DebugAlgorithm.Adapt(Hierarchy, viewerPosition, (Node node) => FindTargetDepth2(viewerPosition, node), Result);
+			DMC.DebugAlgorithm.LoopAdapt(Hierarchy, viewerPosition, (Node node) => FindTargetDepth(viewerPosition, node), Result);
 			Meshify();
 		}
 
@@ -96,7 +103,7 @@ namespace DMC {
 		public void MeshifyNode(DMC.Node node) {
 			GameObject clone = Object.Instantiate(MeshPrefab, new Vector3(0, 0, 0), Quaternion.identity);
 			Color c = Utility.SinColor(node.Depth * 3f);
-			clone.GetComponent<MeshRenderer>().material.color = new Color(c.r, c.g, c.b, 0.2f);
+			clone.GetComponent<MeshRenderer>().material.color = new Color(c.r, c.g, c.b, 0.9f);
 			clone.transform.localScale = Vector3.one * WorldSize;
 			clone.name = "Node " + node.Number + ", Depth " + node.Depth;
 

@@ -40,7 +40,7 @@ public class Console : MonoBehaviour {
         }
         else if(command == "hs") {
             UnityEngine.Debug.Log("HighlightSphere called with argument " + tokens[1]);
-            Debugger.HighlightSphere(tokens[1]);
+            //Debugger.HighlightSphere(tokens[1]);
         }
         else {
             PrintString("ERROR: Invalid command");
