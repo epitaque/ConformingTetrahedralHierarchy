@@ -16,7 +16,7 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 	void Start () {
 		running = true;
 
-		DMCWrapper = new DMC.Wrapper(256f, new Vector3(0, 0, 0), this.GetComponent<Transform>(), MeshPrefab, 15);
+		DMCWrapper = new DMC.Wrapper(256f, new Vector3(0, 0, 0), this.GetComponent<Transform>(), MeshPrefab, 10);
 		DMCWrapper.Meshify();
 
 		Debugger = new DMC.Debugger(256f, DMCWrapper, MeshPrefab, Console.GetComponent<Console>());

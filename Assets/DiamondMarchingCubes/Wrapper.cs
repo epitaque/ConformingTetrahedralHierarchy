@@ -10,7 +10,6 @@ namespace DMC {
 		public List<Node> LoadedLeafNodes;
 
 		private List<DMC.MCBarycentricUnit> PrecomputedVolumeMesh;
-		private AdaptResult Result;
 		private GameObject MeshPrefab;
 		private Transform Parent;
 		private float WorldSize;
@@ -22,21 +21,44 @@ namespace DMC {
 			WorldSize = worldSize;
 			MaxDepth = maxDepth;
 			LoadedLeafNodes = new List<Node>();
-
-			Result = new AdaptResult();
-			Result.CoarsenList = new Node[256];
-			Result.SplitList = new Node[256];
 			UnityObjects = new Hashtable();
 
 			InitializeHierarchy();
 			Update(startingPosition);
 		}
 		public float FindTargetDepth(Vector3 position, Node node) {
-			float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * WorldSize), position) - (node.BoundRadius * 1.3f * WorldSize), 0, float.MaxValue);
+			float dist = Mathf.Clamp(Vector3.Distance((node.BoundingSphere.Center), position/WorldSize) - (node.BoundRadius), 0, float.MaxValue) * WorldSize;
 
 			float targetDepth = 8.32f - 0.683f * Mathf.Log(dist + 1.5f, 2.718f);//(6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
 			float clamped = Mathf.Clamp(targetDepth, 1f, (float)MaxDepth);
 			return (int)clamped;
+		}
+		public bool LinShouldSplit(Vector3 position, Node node) {
+			if (node.Depth < 3f) {
+                return true;
+			}
+            if (node.Depth < WorldSize * 4f / 3f + 8f) {
+                float a = 1.0f;
+                float b = 2.0f;
+                float c = 0.7f;
+                float r = node.BoundingSphere.Radius;
+				float d = Mathf.Pow(Vector3.Distance(position / WorldSize, node.BoundingSphere.Center), 2f) / r - b;
+
+                bool split = d * a < c;
+                return split;
+            }
+			return false;
+		}
+
+		public float LinFindTargetDepth(Vector3 position, Node node) {
+			if(LinShouldSplit(position, node) && node.Depth < MaxDepth) {
+				return node.Depth + 1f;
+			}
+			else if(node.Parent != null && !LinShouldSplit(position, node.Parent) && node.Depth > 2f) {
+				return node.Depth - 1f;
+			}
+			return node.Depth;
+
 		}
 		public float FindTargetDepth2(Vector3 position, Node node) {
 			float targetDepth = 0;
@@ -65,7 +87,8 @@ namespace DMC {
 		}
 
 		public void Update(Vector3 viewerPosition) {
-			DMC.DebugAlgorithm.LoopAdapt(Hierarchy, viewerPosition, (Node node) => FindTargetDepth(viewerPosition, node), Result);
+			DMC.DebugAlgorithm.LoopAdapt(Hierarchy, viewerPosition, (Node node) => LinFindTargetDepth(viewerPosition, node));
+			//DMC.DebugAlgorithm.LoopMakeConforming(Hierarchy, 4);
 			Meshify();
 		}
 

@@ -256,29 +256,44 @@ namespace DMC {
 			UnityEngine.Debug.Log("LoopMakeConforming finished at " + i + " iterations.");
 		}
 		public static bool MakeConforming(Root root) {
-			bool res = true;
+			bool needsNoFurtherIterations = true;
 			foreach(Node child in root.Children) {
 				if(!RecursiveMakeConforming(root, child)) {
-					res = false;
+					needsNoFurtherIterations = false;
 				}
 			}
-			return res;
+			return needsNoFurtherIterations;
 		}
 		private static bool RecursiveMakeConforming(Root root, Node node) {
+			bool needsNoFurtherIterations = true;
 			if(node.IsLeaf) {
 				// check to see if neighboring nodes have children of children
 				for(int i = 0; i < 4; i++) {
 					Vector3 centroid = FindCentroid(node, i);
+					List<Node> toBeSplit = new List<Node>();
 					foreach(Node neighbor in root.FaceToNodeList[centroid]) {
+						if(neighbor.Parent.IsLeaf) continue;
 						if(neighbor.IsLeaf) continue;
-						if(neighbor.Children[0].IsLeaf) continue;
+						if(neighbor.Children[0].IsLeaf && neighbor.Children[1].IsLeaf) continue;
 						else {
-							SplitNode(root, node);
+							toBeSplit.Add(node);
+							needsNoFurtherIterations = false;
 						}
+					}
+					foreach(Node nodeToSplit in toBeSplit) {
+						SplitNode(root, nodeToSplit);
+						
 					}
 				}
 			}
-			return true;
+			else {
+				foreach(Node child in node.Children) {
+					if(!RecursiveMakeConforming(root, child)) {
+						needsNoFurtherIterations = false;
+					}
+				}
+			}
+			return needsNoFurtherIterations;
 		}
 
 
