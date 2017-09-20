@@ -107,6 +107,7 @@ namespace DMC {
 			Root root = new Root();
 
 			root.FaceToNodeList = new Dictionary<Vector3, List<Node>>();
+			root.CVToNodeList = new Dictionary<Vector3, List<Node>>();
 			root.Nodes = new Dictionary<uint, Node>();
 
 			root.Children = new Node[6];
@@ -195,12 +196,23 @@ namespace DMC {
 			bool needsNoFurtherAdaption = true;
 			if(node.IsLeaf) {
 				int targetDepth = (int)findTargetDepth(node);
-				if(node.Depth < targetDepth) { // node needs to have higher depth (be more refined)
-					SplitNode(root, node);	   // so split the node
-					foreach(Node child in node.Children) {
-						targetDepth = (int)findTargetDepth(child);
-						if(child.Depth < targetDepth) {
-							needsNoFurtherAdaption = false;
+				if(node.Depth < 8) {
+					SplitNode(root, node);
+					needsNoFurtherAdaption = false;
+				}
+				else if(node.Depth < targetDepth) { // node needs to have higher depth (be more refined)
+					SplitAllNodesInDiamondIfPossible(root, node);	   // so split the node
+					// and the diamond
+					/*Node diamondPair = FindDiamondNode(root, node);
+					if(diamondPair != null) {
+						SplitNode(root, diamondPair);
+					}*/
+					if(!node.IsLeaf) {
+						foreach(Node child in node.Children) {
+							targetDepth = (int)findTargetDepth(child);
+							if(child.Depth < targetDepth) {
+								needsNoFurtherAdaption = false;
+							}
 						}
 					}
 				}
@@ -208,6 +220,7 @@ namespace DMC {
 			else {
 				foreach(Node child in node.Children) {
 					if(node.IsLeaf) break;
+					//if(!child.IsLeaf) continue;
 					if(!RecursiveAdaptRefine(root, child, findTargetDepth)) {
 						needsNoFurtherAdaption = false;
 					}
@@ -221,7 +234,11 @@ namespace DMC {
 			if(node.IsLeaf) {
 				int targetDepth = (int)findTargetDepth(node);
 				if(node.Depth > targetDepth && node.Depth != 0) { // node depth is too large
-					Node sibling = FindSiblingNode(node);	// get sibling node
+					// see if coarsening is possible
+					MergeNodeIfPossible(root, node);
+					needsNoFurtherAdaption = false;
+
+					/*Node sibling = FindSiblingNode(node);	// get sibling node
 					if(sibling.Depth > targetDepth && sibling.IsLeaf) {
 						Node parent = node.Parent;
 						CoarsenNodes(root, parent);
@@ -229,7 +246,7 @@ namespace DMC {
 						if(parent.Depth > (int)findTargetDepth(parent) && parentSibling.Depth > (int)findTargetDepth(parentSibling)) {
 							needsNoFurtherAdaption = false;
 						}
-					}
+					}*/
 				}
 			}
 			else {
@@ -268,22 +285,19 @@ namespace DMC {
 			bool needsNoFurtherIterations = true;
 			if(node.IsLeaf) {
 				// check to see if neighboring nodes have children of children
-				for(int i = 0; i < 4; i++) {
-					Vector3 centroid = FindCentroid(node, i);
-					List<Node> toBeSplit = new List<Node>();
-					foreach(Node neighbor in root.FaceToNodeList[centroid]) {
-						if(neighbor.Parent.IsLeaf) continue;
+				List<Node> neighbors = FindNeighboringNodes(root, node);
+				List<Node> toBeSplit = new List<Node>();
+				foreach(Node neighbor in neighbors) {
 						if(neighbor.IsLeaf) continue;
 						if(neighbor.Children[0].IsLeaf && neighbor.Children[1].IsLeaf) continue;
+						if(neighbor.Depth < node.Depth) continue;
 						else {
 							toBeSplit.Add(node);
 							needsNoFurtherIterations = false;
 						}
-					}
-					foreach(Node nodeToSplit in toBeSplit) {
-						SplitNode(root, nodeToSplit);
-						
-					}
+				}
+				foreach(Node nodeToSplit in toBeSplit) {
+					SplitAllNodesInDiamondIfPossible(root, nodeToSplit);
 				}
 			}
 			else {
@@ -296,6 +310,43 @@ namespace DMC {
 			return needsNoFurtherIterations;
 		}
 
+		public static void SplitAllNodesInDiamondIfPossible(Root root, Node node) {
+			UnityEngine.Debug.Log("SplitAllNodesInDiamondIfPossible called on Node " + node.Number);
+			int MaxNumberOfTetsInDiamond = Lookups.DiamondNumberOfTetrahedra[node.Depth % 3];
+			int ActualNumberOfTetsInDiamond = root.CVToNodeList[node.CentralVertex].Count;
+			UnityEngine.Debug.Log("MaxNumberOfTetsInDiamond: " + MaxNumberOfTetsInDiamond + ", ActualNumberOfTetsInDiamond: " + ActualNumberOfTetsInDiamond);
+			UnityEngine.Debug.Assert(ActualNumberOfTetsInDiamond <= MaxNumberOfTetsInDiamond);
+			if(!(ActualNumberOfTetsInDiamond <= MaxNumberOfTetsInDiamond)) {
+				string Depths = "";
+				foreach(Node n in root.CVToNodeList[node.CentralVertex]) {
+					Depths += n.Depth + ", ";
+				}
+				UnityEngine.Debug.LogError("Depths string: " + Depths);
+			}
+			if(MaxNumberOfTetsInDiamond == ActualNumberOfTetsInDiamond) {
+				foreach(Node n in root.CVToNodeList[node.CentralVertex]) {
+					SplitNode(root, n);
+				}
+			}
+		}
+
+		public static void MergeNodeIfPossible(Root root, Node node) {
+			List<Node> ParentDiamond = root.CVToNodeList[node.Parent.CentralVertex];
+
+			List<Node> Children = new List<Node>();
+			foreach(Node parent in ParentDiamond) {
+				Children = Children.Union(parent.Children).ToList();
+			}
+			foreach(Node child in Children) {
+				if(!child.IsLeaf) {
+					Debug.Log("INFO: Failed to merge node because child of node of parent diamond is not a leaf.");
+					return;
+				}
+			}
+			foreach(Node parent in ParentDiamond) {
+				CoarsenNodes(root, parent);
+			}
+		}
 
 		public static Node FindSiblingNode(Node node) {
 			UnityEngine.Debug.Assert(node.Depth >= 1);
@@ -303,6 +354,17 @@ namespace DMC {
 			return siblings[0].Number == node.Number ? siblings[1] : siblings[0];
 		}
  
+		public static Node FindDiamondNode(Root root, Node node) {
+			List<Node> neighbors = FindNeighboringNodes(root, node);
+			foreach(Node neighbor in neighbors) {
+				if(neighbor.Number != node.Number && neighbor.CentralVertex == node.CentralVertex) {
+					return neighbor;
+				}
+			}
+			UnityEngine.Debug.LogError("Could not find other node that makes diamond! Node " + node.Number);
+			return null;
+		}
+
 		public static List<Node> FindNeighboringNodes(Root root, Node node) {
 			List<Node> neighboringNodes = new List<Node>();
 
@@ -373,15 +435,19 @@ namespace DMC {
 			parent.IsLeaf = true;
 		}
 
-		public static void AddToDictionary(Root Root, Node Node) {
+		public static void AddToDictionary(Root root, Node node) {
 			// Update FaceToNodeList
 			for(int i = 0; i < 4; i++) {
-				Vector3 centroid = FindCentroid(Node, i);
-				if(!Root.FaceToNodeList.ContainsKey(centroid)) {
-					Root.FaceToNodeList.Add(centroid, new List<Node>());
+				Vector3 centroid = FindCentroid(node, i);
+				if(!root.FaceToNodeList.ContainsKey(centroid)) {
+					root.FaceToNodeList.Add(centroid, new List<Node>());
 				}
-				Root.FaceToNodeList[centroid].Add(Node);
+				root.FaceToNodeList[centroid].Add(node);
 			}
+			if(!root.CVToNodeList.ContainsKey(node.CentralVertex)) {
+				root.CVToNodeList.Add(node.CentralVertex, new List<Node>());
+			}
+			root.CVToNodeList[node.CentralVertex].Add(node);
 		}
 
 		public static Vector3 FindCentroid(Node Node, int FaceNumber) {

@@ -92,6 +92,11 @@ namespace DMC {
 			Meshify();
 		}
 
+		public void MakeConforming() {
+			DMC.DebugAlgorithm.LoopMakeConforming(Hierarchy, 1);
+			Meshify();
+		}
+
 		public void Meshify() {
 			List<Node> newLeafNodes = new List<Node>();
 			for(int i = 0; i < 6; i++) {

@@ -2,16 +2,7 @@ using UnityEngine;
 
 namespace DMC {
 	public static class Lookups {
-		public static int[,] RootTetrahedrons =
-		 /*{	
-			{6, 0, 7, 3},
-			{0, 6, 4, 7},
-			{0, 6, 4, 5}, 
-			{6, 0, 5, 1}, 
-			{0, 6, 1, 2}, 
-			{6, 0, 2, 3}, 
-		};*/
-		{	
+		public static int[,] RootTetrahedrons = {	
 			{6, 0, 7, 3},
  			{0, 6, 4, 7},
  			{0, 6, 4, 5}, 
@@ -53,6 +44,10 @@ namespace DMC {
 			{2, 12, 3, 0, 15, 24, 16, 6},
 			{5, 0, 4, 14, 18, 6, 17, 26},
 			{0, 3, 13, 4, 6, 16, 25, 17},
+		};
+
+		public static readonly int[] DiamondNumberOfTetrahedra = {
+			6, 4, 8
 		};
 
 		public static readonly int[][] PossibleTetrahedronVertexOrderCombos = {

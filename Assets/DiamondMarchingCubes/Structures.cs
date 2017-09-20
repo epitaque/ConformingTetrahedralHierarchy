@@ -23,7 +23,8 @@ namespace DMC {
 	public class Root {
 		public Node[] Children;
 		public Dictionary<uint, Node> Nodes; // Index: Node number | Value: Node
-		public Dictionary<Vector3, List<Node>> FaceToNodeList; // Index: Centroid of face | Value: All nodes sharing that face
+		public Dictionary<Vector3, List<Node>> CVToNodeList; // Index: Central Vertex of a Node | Value: All nodes with that central vertex
+		public Dictionary<Vector3, List<Node>> FaceToNodeList; // Index: Centroid of a Face | Value: All nodes sharing that face
 		public bool IsValid; // true if every split uses the longest edge
 	}
 
