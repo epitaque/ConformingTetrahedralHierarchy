@@ -149,7 +149,7 @@ namespace DMC {
 				return Mathf.Clamp(targetDepth, 1, maxDepth);
 		}
 
-		public static void LoopAdapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, int MaxIterations = 20) {
+		public static void LoopAdapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, int MaxIterations = 100) {
 			// coarsen
 			int i = 0;
 			while(!Adapt(root, position, findTargetDepth, true)) {
@@ -193,41 +193,28 @@ namespace DMC {
 		}
 		// returns true if no further adaption is required
 		private static bool RecursiveAdaptRefine(Root root, Node node, FindTargetDepth findTargetDepth) {
-			bool needsNoFurtherAdaption = true;
 			if(node.IsLeaf) {
 				int targetDepth = (int)findTargetDepth(node);
-				if(node.Depth < 8) {
+				if(node.Depth < 6) {
 					SplitNode(root, node);
-					needsNoFurtherAdaption = false;
+					return false;
 				}
 				else if(node.Depth < targetDepth) { // node needs to have higher depth (be more refined)
 					SplitAllNodesInDiamondIfPossible(root, node);	   // so split the node
-					// and the diamond
-					/*Node diamondPair = FindDiamondNode(root, node);
-					if(diamondPair != null) {
-						SplitNode(root, diamondPair);
-					}*/
-					if(!node.IsLeaf) {
-						foreach(Node child in node.Children) {
-							targetDepth = (int)findTargetDepth(child);
-							if(child.Depth < targetDepth) {
-								needsNoFurtherAdaption = false;
-							}
-						}
-					}
+					return false;
 				}
 			}
 			else {
 				foreach(Node child in node.Children) {
-					if(node.IsLeaf) break;
+					//if(node.IsLeaf) break;
 					//if(!child.IsLeaf) continue;
 					if(!RecursiveAdaptRefine(root, child, findTargetDepth)) {
-						needsNoFurtherAdaption = false;
+						return false;
 					}
 				}
 			}
 
-			return needsNoFurtherAdaption;
+			return true;
 		}
 		private static bool RecursiveAdaptCoarsen(Root root, Node node, FindTargetDepth findTargetDepth) {
 			bool needsNoFurtherAdaption = true;
@@ -310,7 +297,7 @@ namespace DMC {
 			return needsNoFurtherIterations;
 		}
 
-		public static void SplitAllNodesInDiamondIfPossible(Root root, Node node) {
+		public static bool SplitAllNodesInDiamondIfPossible(Root root, Node node) {
 			UnityEngine.Debug.Log("SplitAllNodesInDiamondIfPossible called on Node " + node.Number);
 			int MaxNumberOfTetsInDiamond = Lookups.DiamondNumberOfTetrahedra[node.Depth % 3];
 			int ActualNumberOfTetsInDiamond = root.CVToNodeList[node.CentralVertex].Count;
@@ -325,9 +312,17 @@ namespace DMC {
 			}
 			if(MaxNumberOfTetsInDiamond == ActualNumberOfTetsInDiamond) {
 				foreach(Node n in root.CVToNodeList[node.CentralVertex]) {
+					if(!n.IsLeaf) {
+						return false;
+					}
+				}
+				foreach(Node n in root.CVToNodeList[node.CentralVertex]) {
+					UnityEngine.Debug.Assert(n.IsLeaf);
 					SplitNode(root, n);
 				}
+				return true;
 			}
+			return false;
 		}
 
 		public static void MergeNodeIfPossible(Root root, Node node) {
