@@ -34,7 +34,7 @@ namespace DMC {
 			return (int)clamped;
 		}
 		public bool LinShouldSplit(Vector3 position, Node node) {
-			if (node.Depth < 3f) {
+			if (node.Depth < 8f) {
                 return true;
 			}
             if (node.Depth < WorldSize * 4f / 3f + 8f) {

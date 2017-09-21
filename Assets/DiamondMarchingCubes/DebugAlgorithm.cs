@@ -149,7 +149,7 @@ namespace DMC {
 				return Mathf.Clamp(targetDepth, 1, maxDepth);
 		}
 
-		public static void LoopAdapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, int MaxIterations = 100) {
+		public static void LoopAdapt(Root root, Vector3 position, FindTargetDepth findTargetDepth, int MaxIterations = 20) {
 			// coarsen
 			int i = 0;
 			while(!Adapt(root, position, findTargetDepth, true)) {
@@ -193,15 +193,16 @@ namespace DMC {
 		}
 		// returns true if no further adaption is required
 		private static bool RecursiveAdaptRefine(Root root, Node node, FindTargetDepth findTargetDepth) {
+			bool res = true;
 			if(node.IsLeaf) {
 				int targetDepth = (int)findTargetDepth(node);
-				if(node.Depth < 6) {
+				if(node.Depth < 8) {
 					SplitNode(root, node);
-					return false;
+					res = false;
 				}
 				else if(node.Depth < targetDepth) { // node needs to have higher depth (be more refined)
 					SplitAllNodesInDiamondIfPossible(root, node);	   // so split the node
-					return false;
+					res = false;
 				}
 			}
 			else {
@@ -209,12 +210,12 @@ namespace DMC {
 					//if(node.IsLeaf) break;
 					//if(!child.IsLeaf) continue;
 					if(!RecursiveAdaptRefine(root, child, findTargetDepth)) {
-						return false;
+						res = false;
 					}
 				}
 			}
 
-			return true;
+			return res;
 		}
 		private static bool RecursiveAdaptCoarsen(Root root, Node node, FindTargetDepth findTargetDepth) {
 			bool needsNoFurtherAdaption = true;
@@ -297,6 +298,7 @@ namespace DMC {
 			return needsNoFurtherIterations;
 		}
 
+		// returns true if successful split
 		public static bool SplitAllNodesInDiamondIfPossible(Root root, Node node) {
 			UnityEngine.Debug.Log("SplitAllNodesInDiamondIfPossible called on Node " + node.Number);
 			int MaxNumberOfTetsInDiamond = Lookups.DiamondNumberOfTetrahedra[node.Depth % 3];
