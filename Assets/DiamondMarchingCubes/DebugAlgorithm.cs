@@ -173,8 +173,21 @@ namespace DMC {
 			return root;
 		}
 
+		public static Root CreateBigHierarchy() {
+			Root root = CreateHierarchy(new Vector3(0, 0, 0));
+
+			for(int i = 0; i < 6; i++) {
+				Node tet = root.RootDiamond.Tetrahedra[i];
+				CheckSplit(root, new Vector3(0, 0, 0), tet);
+			}
+
+			return root;
+		}
+
 		public delegate float FindTargetDepth(Node node);
 		public static float FindTargetDepth2(Vector3 position, Node node) {
+			return 10f;
+
 			float mapSize = 256f;
 			float maxDepth = 10f;
 			float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * mapSize), position) - (node.BoundRadius * mapSize * 1.2f), 0, float.MaxValue);
