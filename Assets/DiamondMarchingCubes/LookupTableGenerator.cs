@@ -16,7 +16,11 @@ public static class DMCLookupTableGenerator {
         // create a big hierarchy and loop through each diamond to find child offsets
         DebugAlgorithm.CreateHierarchy(new Vector3(0, 0, 0));
 
+
+
     }
+
+    
 
     public static byte GetDiamondType(Vector3Int cv) {
         int xtz = CountTrailingZeroes(cv.x);
