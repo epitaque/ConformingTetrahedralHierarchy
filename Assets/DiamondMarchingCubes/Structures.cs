@@ -21,11 +21,26 @@ namespace DMC {
 	}
 
 	public class Root {
-		public Node[] Children;
 		public Dictionary<uint, Node> Nodes; // Index: Node number | Value: Node
-		public Dictionary<Vector3, List<Node>> CVToNodeList; // Index: Central Vertex of a Node | Value: All nodes with that central vertex
-		public Dictionary<Vector3, List<Node>> FaceToNodeList; // Index: Centroid of a Face | Value: All nodes sharing that face
+		public Dictionary<Vector3, Diamond> Diamonds;
+
+		public Queue<Diamond> SplitQueue;
+		public Queue<Diamond> MergeQueue;
+
+		public Diamond RootDiamond;
+
 		public bool IsValid; // true if every split uses the longest edge
+	}
+
+	public class Diamond {
+		public List<Node> Tetrahedra;
+		public int Phase;
+		public int Level;
+		public List<Diamond> Parents;
+		public List<Diamond> Children;
+		public Vector3 CentralVertex;
+		public Vector3 SpineA;
+		public Vector3 SpineB;
 	}
 
 	public class Hexahedron {

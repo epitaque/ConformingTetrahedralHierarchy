@@ -60,7 +60,7 @@ namespace DMC {
 			return node.Depth;
 
 		}
-		public float FindTargetDepth2(Vector3 position, Node node) {
+		public float FindTargetDepth4(Vector3 position, Node node) {
 			float targetDepth = 0;
 			position = new Vector3(0, 0, 0);
 			float dist = Vector3.Distance(node.BoundingSphere.Center, position) - node.BoundingSphere.Radius;
@@ -82,25 +82,27 @@ namespace DMC {
 			return (int)clamped;
 		}
 		public void InitializeHierarchy() {
-			Hierarchy = DMC.DebugAlgorithm.Run(new Vector3(0, 0, 0));
-			PrecomputedVolumeMesh = DMC.DebugAlgorithm.CreatePrecomputedVolumeMesh(Hierarchy.Children[0]);
+			Hierarchy = DMC.DebugAlgorithm.CreateTestHierarchy();//DMC.DebugAlgorithm.Run(new Vector3(0, 0, 0));
+			PrecomputedVolumeMesh = DMC.DebugAlgorithm.CreatePrecomputedVolumeMesh(Hierarchy.RootDiamond.Tetrahedra[0]);
 		}
 
 		public void Update(Vector3 viewerPosition) {
-			DMC.DebugAlgorithm.LoopAdapt(Hierarchy, viewerPosition, (Node node) => LinFindTargetDepth(viewerPosition, node));
+			//DMC.DebugAlgorithm.LoopAdapt(Hierarchy, viewerPosition, (Node node) => LinFindTargetDepth(viewerPosition, node));
 			//DMC.DebugAlgorithm.LoopMakeConforming(Hierarchy, 4);
+			//DMC.DebugAlgorithm.CheckSplit(Root)
+
 			Meshify();
 		}
 
 		public void MakeConforming() {
-			DMC.DebugAlgorithm.LoopMakeConforming(Hierarchy, 1);
+			//DMC.DebugAlgorithm.LoopMakeConforming(Hierarchy, 1);
 			Meshify();
 		}
 
 		public void Meshify() {
 			List<Node> newLeafNodes = new List<Node>();
 			for(int i = 0; i < 6; i++) {
-				PopulateLeafNodeList(Hierarchy.Children[i], newLeafNodes);
+				PopulateLeafNodeList(Hierarchy.RootDiamond.Tetrahedra[i], newLeafNodes);
 			}
 			// 1. delete the nodes that were deleted
 				// items in oldlist that are not in newlist
@@ -140,6 +142,10 @@ namespace DMC {
 			clone.GetComponent<Transform>().SetParent(Parent);
 
 			UnityObjects[node.Number] = clone;
+		}
+
+		public void DrawGizmos() {
+			//DebugAlgorithm.VisualizeDiamonds();
 		}
 	}
 }

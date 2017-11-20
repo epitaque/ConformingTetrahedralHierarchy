@@ -58,12 +58,6 @@ namespace DMC {
 		// see p4 of Simplex and Diamond Hierarchies Models and Applications
 		// [cycle number(0-2), tetrahedron number (0-1), vertex number(0-3)]
 
-		/*public static int[,,] TetrahedronVertexOrder = 
-		{
-			{ {2, 1, 3, 4},  {3, 0, 2, 4} }, 
-			{ {2, 1, 3, 4},  {0, 2, 3, 4} }, 
-			{ {2, 1, 3, 4},  {2, 0, 3, 4} }, 
-		};*/
 		public static int[,,] TetrahedronVertexOrder = 
 		{ // 4 signifies longest edge midpoint
 			{ {2, 1, 3, 4},  {0, 3, 2, 4} }, 
@@ -77,6 +71,25 @@ namespace DMC {
 
 		public static int[] HexahedronVertexReorder = {
 			3, 5, 2, 0, 6, 7, 4, 1
+		};
+
+		// index: phase result: #children
+		public static int[] DiamondChildren = {
+			6, 4, 8
+		};
+
+		// index: phase result: #parents
+		public static int[] DiamondParents = {
+			3, 2 ,4
+		};
+
+		// index: phase result: #tets
+		public static int[] DiamondTets = {
+			6, 4, 8
+		};
+
+		public static Vector3[] ej = {
+			new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1)
 		};
 	}
 

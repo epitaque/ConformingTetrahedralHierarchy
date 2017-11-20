@@ -10,7 +10,7 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 	public GameObject Viewer;
 	public GameObject Console;
 
-	public int MaxDepth = 15;
+	public int MaxDepth = 8;
 
 	DMC.Wrapper DMCWrapper;
 	DMC.Debugger Debugger;
@@ -40,6 +40,7 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 	void OnDrawGizmos() {
 		if(running) {
 			Debugger.DrawGizmos();
+			DMCWrapper.DrawGizmos();
 		}
 	}
 

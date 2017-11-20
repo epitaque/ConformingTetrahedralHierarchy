@@ -63,7 +63,7 @@ namespace DMC {
                     NodeMeshes.Clear();
                     PreviouslyHighlightedObjects.Clear();
                     Gizmos.Clear();
-                    List<Node> Neighbors = DMC.DebugAlgorithm.FindNeighboringNodes(DMCWrapper.Hierarchy, DMCWrapper.Hierarchy.Nodes[nodeNumber]);
+                    List<Node> Neighbors = new List<Node>(); //DMC.DebugAlgorithm.FindNeighboringNodes(DMCWrapper.Hierarchy, DMCWrapper.Hierarchy.Nodes[nodeNumber]);
                     
                     foreach(Node node in Neighbors) {
                         HighlightNode(node);

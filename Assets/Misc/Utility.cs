@@ -51,8 +51,8 @@ public static class Utility {
     }
     public static void DrawHierarchy(DMC.Root root, float scale = 1) {
 		for(int i = 0; i < 6; i++) {
-			if(root.Children[i] != null) {
-				DrawNode(root.Children[i], scale, i);
+			if(root.RootDiamond.Tetrahedra[i] != null) {
+				DrawNode(root.RootDiamond.Tetrahedra[i], scale, i);
 			}
 		}
     }
