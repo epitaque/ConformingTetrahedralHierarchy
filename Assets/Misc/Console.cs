@@ -42,6 +42,18 @@ public class Console : MonoBehaviour {
             UnityEngine.Debug.Log("HighlightSphere called with argument " + tokens[1]);
             //Debugger.HighlightSphere(tokens[1]);
         }
+		else if(command == "split") {
+			UnityEngine.Debug.Log("Split called with argument " + tokens[1]);
+			Debugger.SplitNode(tokens[1]);
+		}
+		else if(command == "merge") {
+			UnityEngine.Debug.Log("Merge called with argument " + tokens[1]);
+			Debugger.MergeNode(tokens[1]);
+		}
+		else if(command == "adapt") {
+			UnityEngine.Debug.Log("Adapt called.");
+			Debugger.Adapt();
+		}
         else {
             PrintString("ERROR: Invalid command");
         }

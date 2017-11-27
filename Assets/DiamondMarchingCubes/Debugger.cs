@@ -13,6 +13,8 @@ namespace DMC {
         private List<Sphere> HighlightedBoundingSpheres;
         private GameObject MeshPrefab;
 
+		private Transform Camera;
+
         class Line {
             public Vector3 A;
             public Vector3 B;
@@ -20,7 +22,7 @@ namespace DMC {
         }
 
 
-        public Debugger(float WorldSize, Wrapper DMCWrapper, GameObject MeshPrefab, Console Console) {
+        public Debugger(float WorldSize, Wrapper DMCWrapper, GameObject MeshPrefab, Console Console, Transform Camera) {
             this.DMCWrapper = DMCWrapper;
             this.Console = Console;
             this.PreviouslyHighlightedObjects = new List<GameObject>();
@@ -29,6 +31,7 @@ namespace DMC {
             this.HighlightedBoundingSpheres = new List<Sphere>();
             this.WorldSize = WorldSize;
             this.MeshPrefab = MeshPrefab;
+			this.Camera = Camera;
         }
 
         public Node StringToNode(string nodeNumberStr) {
@@ -110,6 +113,30 @@ namespace DMC {
         public void HighlightBoundingSphere(Node node) {
             this.HighlightedBoundingSpheres.Add(node.BoundingSphere);
         }
+
+		public void SplitNode(string nodeNumberStr) {
+			Node n = StringToNode(nodeNumberStr);
+
+			if(n != null) {
+				DMC.DebugAlgorithm.SplitDiamond(DMCWrapper.Hierarchy, DMCWrapper.Hierarchy.Diamonds[n.CentralVertex]);
+				DMCWrapper.Meshify();
+			}
+		}
+
+		public void MergeNode(string nodeNumberStr) {
+			Node n = StringToNode(nodeNumberStr);
+
+			if(n != null) {
+				DMC.DebugAlgorithm.MergeTetrahedron(DMCWrapper.Hierarchy, n.Parent);
+				DMCWrapper.Meshify();
+			}
+		}
+
+		public void Adapt() {
+			DMC.DebugAlgorithm.LoopAdapt(DMCWrapper.Hierarchy, Camera.position);
+			//DMC.DebugAlgorithm.Adapt(DMCWrapper.Hierarchy, Camera.position);
+			DMCWrapper.Meshify();
+		}
 
         public void DrawGizmos() {
             foreach(Line l in Gizmos) {

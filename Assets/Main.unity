@@ -210,8 +210,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83c7353689354cf4f9165c89c49ae7c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  InputText: {fileID: 0}
-  ConsoleOutput: {fileID: 0}
+  InputText: {fileID: 1812199697}
+  ConsoleOutput: {fileID: 1671047732}
 --- !u!4 &666774360
 Transform:
   m_ObjectHideFlags: 0

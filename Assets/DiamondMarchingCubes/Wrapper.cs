@@ -23,6 +23,8 @@ namespace DMC {
 			LoadedLeafNodes = new List<Node>();
 			UnityObjects = new Hashtable();
 
+			DMC2.DMCLookupTableGenerator.Run();
+
 			InitializeHierarchy();
 			Update(startingPosition);
 		}
@@ -82,14 +84,16 @@ namespace DMC {
 			return (int)clamped;
 		}
 		public void InitializeHierarchy() {
-			Hierarchy = DMC.DebugAlgorithm.CreateTestHierarchy();//DMC.DebugAlgorithm.Run(new Vector3(0, 0, 0));
+			Hierarchy = DMC.DebugAlgorithm.CreateTestHierarchy(); //DMC.DebugAlgorithm.Run(new Vector3(0, 0, 0));
 			PrecomputedVolumeMesh = DMC.DebugAlgorithm.CreatePrecomputedVolumeMesh(Hierarchy.RootDiamond.Tetrahedra[0]);
 		}
 
 		public void Update(Vector3 viewerPosition) {
 			//DMC.DebugAlgorithm.LoopAdapt(Hierarchy, viewerPosition, (Node node) => LinFindTargetDepth(viewerPosition, node));
 			//DMC.DebugAlgorithm.LoopMakeConforming(Hierarchy, 4);
-			//DMC.DebugAlgorithm.CheckSplit(Root)
+			//DMC.DebugAlgorithm.CheckSplit(Hierarchy)
+
+			DMC.DebugAlgorithm.Adapt(Hierarchy, viewerPosition);
 
 			Meshify();
 		}

@@ -21,11 +21,12 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 		DMCWrapper = new DMC.Wrapper(256f, new Vector3(0, 0, 0), this.GetComponent<Transform>(), MeshPrefab, MaxDepth);
 		DMCWrapper.Meshify();
 
-		Debugger = new DMC.Debugger(256f, DMCWrapper, MeshPrefab, Console.GetComponent<Console>());
+		Debugger = new DMC.Debugger(256f, DMCWrapper, MeshPrefab, Console.GetComponent<Console>(), Viewer.GetComponent<Transform>());
 		Console.GetComponent<Console>().Debugger = Debugger;
 	}
 
 	void Update() {
+		//DMCWrapper.Update(Viewer.GetComponent<Transform>().position);
 		if(Input.GetKeyDown(KeyCode.R)) {
 			DMCWrapper.Update(Viewer.GetComponent<Transform>().position);
 		}
