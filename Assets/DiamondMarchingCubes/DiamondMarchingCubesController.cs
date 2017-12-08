@@ -26,12 +26,12 @@ public class DiamondMarchingCubesController : MonoBehaviour {
 	}
 
 	void Update() {
-		//DMCWrapper.Update(Viewer.GetComponent<Transform>().position);
+		DMCWrapper.Update(Viewer.GetComponent<Transform>().position);
 		if(Input.GetKeyDown(KeyCode.R)) {
-			DMCWrapper.Update(Viewer.GetComponent<Transform>().position);
+			//DMCWrapper.Update(Viewer.GetComponent<Transform>().position);
 		}
 		if(Input.GetKeyDown(KeyCode.M)) {
-			DMCWrapper.MakeConforming();
+			//DMCWrapper.MakeConforming();
 		}
 		if(Input.GetKeyDown(KeyCode.Return)) {
 			//Console.ProcessCommand(ConsoleInputString.GetComponent<)

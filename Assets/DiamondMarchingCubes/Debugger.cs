@@ -123,6 +123,20 @@ namespace DMC {
 			}
 		}
 
+		public void Coarsen() {
+			Debug.Log("Coarsening at position: " + Camera.position);
+
+			DMC.DebugAlgorithm.Coarsen(DMCWrapper.Hierarchy, Camera.position);
+			DMCWrapper.Meshify();
+		}
+
+		public void Refine() {
+			Debug.Log("Refining at position: " + Camera.position);
+	
+			DMC.DebugAlgorithm.Refine(DMCWrapper.Hierarchy, Camera.position);
+			DMCWrapper.Meshify();
+		}
+
 		public void MergeNode(string nodeNumberStr) {
 			Node n = StringToNode(nodeNumberStr);
 
@@ -133,7 +147,7 @@ namespace DMC {
 		}
 
 		public void Adapt() {
-			DMC.DebugAlgorithm.LoopAdapt(DMCWrapper.Hierarchy, Camera.position);
+			DMC.DebugAlgorithm.Adapt(DMCWrapper.Hierarchy, Camera.position);
 			//DMC.DebugAlgorithm.Adapt(DMCWrapper.Hierarchy, Camera.position);
 			DMCWrapper.Meshify();
 		}

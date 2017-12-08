@@ -46,9 +46,17 @@ public class Console : MonoBehaviour {
 			UnityEngine.Debug.Log("Split called with argument " + tokens[1]);
 			Debugger.SplitNode(tokens[1]);
 		}
+		else if(command == "coarsen") {
+			UnityEngine.Debug.Log("Coarsen called.");
+			Debugger.Coarsen();
+		}
 		else if(command == "merge") {
 			UnityEngine.Debug.Log("Merge called with argument " + tokens[1]);
 			Debugger.MergeNode(tokens[1]);
+		}
+		else if(command == "refine") {
+			UnityEngine.Debug.Log("Refine called.");
+			Debugger.Refine();
 		}
 		else if(command == "adapt") {
 			UnityEngine.Debug.Log("Adapt called.");

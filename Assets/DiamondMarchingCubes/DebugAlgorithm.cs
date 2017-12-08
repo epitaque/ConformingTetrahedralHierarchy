@@ -16,11 +16,11 @@ namespace DMC {
 			//return null;
 			//FindCorrectCombinationOfTetVerticesAndOrder();
 			//CreateTestHierarchy();
-			return CreateHierarchy(PlayerLocation);
+			return CreateHierarchy();
 			//return null;
 		}
 
-		public static Root CreateHierarchy(Vector3 PlayerLocation) {
+		public static Root CreateHierarchy() {
 			Root root = new Root();
 
 			root.Diamonds = new Dictionary<Vector3, Diamond>();
@@ -67,7 +67,7 @@ namespace DMC {
 		}
 
 		public static Root CreateTestHierarchy() {
-			Root root = CreateHierarchy(new Vector3(0, 0, 0));
+			Root root = CreateHierarchy();
 
 			//DebugDiamonds.Add(root.RootDiamond);
 
@@ -91,7 +91,7 @@ namespace DMC {
 
 			float targetDepth;
 			if(dist < 60f) {
-				targetDepth = 7f;
+				targetDepth = 14f;
 			}
 			else {
 				targetDepth = 1f;
@@ -119,7 +119,19 @@ namespace DMC {
 			return max;
 		}
 
-		public static float FindMaxDepth(Diamond d, Vector3 position) {
+		public static float FindMinTargetDepth(Diamond d, Vector3 position) {
+			float min = int.MaxValue;
+			foreach(Node n in d.Tetrahedra) {
+				float td = finder(n, position);
+				if(td <  min) {
+					min = td;
+				}
+			}
+			return min;
+		}
+
+
+		public static float FindMaxDepth(Diamond d) {
 			float max = int.MinValue;
 			foreach(Node n in d.Tetrahedra) {
 				float de = n.Depth;
@@ -130,7 +142,7 @@ namespace DMC {
 			return max;
 		}
 
-		public static float FindMinDepth(Diamond d, Vector3 position) {
+		public static float FindMinDepth(Diamond d) {
 			float min = int.MaxValue;
 			foreach(Node n in d.Tetrahedra) {
 				float de = n.Depth;
@@ -141,52 +153,16 @@ namespace DMC {
 			return min;
 		}
 
-		public static float LinFindTargetDepth(Vector3 position, Node node) {
-			//return 0;
-			/*if (t->level < max_depth)
-			{
-				float a = 1.0f;
-				float b = 2.0f;
-				float c = 0.7f;
-				float r = t->radius;
-				float d = vec3_distance2(v, t->middle) / r - b;
-
-				int split = d * a < c;
-				return split;
-			}*/
-
-			return 5;
-		}
-
-		public static void LoopAdapt(Root root, Vector3 position, int MaxIterations = 5) {
-			//coarsen
-			int i = 20;
-			while(!Adapt(root, position, true)) {
-				if(i > MaxIterations) {
-					UnityEngine.Debug.LogWarning("WARNING: LoopAdapt Coarsen stage iterations maximum reached at " + MaxIterations);
-					break;
-				}
-				i++;
-			}
-			UnityEngine.Debug.Log("LoopAdapt Coarsen stage finished at " + i + " iterations.");
-
-			// refine
-			i = 0;
-			while(!Adapt(root, position, false)) {
-				if(i > MaxIterations) {
-					UnityEngine.Debug.LogWarning("WARNING: LoopAdapt Refine stage iterations maximum reached at " + MaxIterations);
-					break;
-				}
-				i++;
-			}
-			UnityEngine.Debug.Log("LoopAdapt Refine stage finished at " + i + " iterations.");
-
-		}
-
-
 		// returns true if no further adaption is required
-		public static bool Adapt(Root root, Vector3 position, bool coarsen) {
-			bool res = true;
+		public static bool Adapt(Root root, Vector3 position) {
+			System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+			sw.Start();
+			Refine(root, position);
+			Coarsen(root, position);
+			sw.Stop();
+			Debug.Log("Adapt took " + sw.ElapsedMilliseconds + "ms");
+			return true;
+			/*bool res = true;
 			foreach(Node child in root.RootDiamond.Tetrahedra) {
 				if(coarsen) {
 					if(!RecursiveAdaptCoarsen(root, child, position)) {
@@ -199,8 +175,32 @@ namespace DMC {
 					}
 				}
 			}
-			return res;
+			return res;*/
 		}
+
+
+		public static void Coarsen(Root root, Vector3 position) {
+			for(int i = 0; i < 6; i++) {
+				Coarsen(root, root.RootDiamond.Tetrahedra[i], position);
+			}
+		}
+
+		public static void Coarsen(Root root, Node node, Vector3 position) {
+			if(node == null || node.IsDeleted) return;
+			Diamond d = root.Diamonds[node.CentralVertex];
+			int maxTargetDepth = (int)FindMaxTargetDepth(d, position);
+			int minDepth = (int)FindMinDepth(d);
+			if( (minDepth) > maxTargetDepth) { // node needs to have higher depth (be more refined)
+				MergeTetrahedron(root, node);
+			}
+
+			if(!node.IsLeaf) {
+				for(int i = 0; i < 2; i++) {
+					Coarsen(root, node.Children[i], position);
+				}
+			}
+		}
+
 		// returns true if no further adaption is required
 		private static bool RecursiveAdaptRefine(Root root, Node node, Vector3 position) {
 			Debug.Log("adapting at position: " + position);
@@ -249,13 +249,6 @@ namespace DMC {
 
 
 
-		public static void Adapt(Root root, Vector3 position) {
-			Debug.Log("adapt called");
-			foreach(Node n in root.RootDiamond.Tetrahedra) {
-				Adapt(root, n, position);
-			}
-		}
-
 		public static void Adapt(Root root, Node node, Vector3 position) {
 			if(node == null || node.IsDeleted) return;
 			if(!node.IsLeaf) {
@@ -270,8 +263,8 @@ namespace DMC {
 			else {
 				Diamond d = root.Diamonds[node.CentralVertex];
 				float maxTargetDepth = FindMaxTargetDepth(d, position);
-				float maxDepth = FindMaxDepth(d, position);
-				float minDepth = FindMinDepth(d, position);
+				float maxDepth = FindMaxDepth(d);
+				float minDepth = FindMinDepth(d);
 				if(minDepth < maxTargetDepth) {
 					SplitDiamond(root, d);
 				}
@@ -297,8 +290,15 @@ namespace DMC {
 			return false;
 		}
 
+		public static void Refine(Root root, Vector3 position) {
+			for(int i = 0; i < 6; i++) {
+				CheckSplit(root, position, root.RootDiamond.Tetrahedra[i]);
+			}
+
+		}
+
 		public static void CheckSplit(Root root, Vector3 position, Node node) {
-			if(FindTargetDepth2(node, position) > node.Depth) {
+			if(finder(node, position) > node.Depth) {
 				SplitDiamond(root, root.Diamonds[node.CentralVertex]);
 
 				CheckSplit(root, position, node.Children[0]);
@@ -358,7 +358,7 @@ namespace DMC {
 
 		public static void CollapseNode(Root root, Node node) {
 			if(node.Children == null || node.Children[0].Children != null || node.Children[1].Children != null) {
-				Debug.Log("node child 0" + node.Children[0].Children + ", node child 1: " + node.Children[1].Children);
+				//Debug.Log("node child 0" + node.Children[0].Children + ", node child 1: " + node.Children[1].Children);
 				//Debug.Assert(false);
 				return;
 			}

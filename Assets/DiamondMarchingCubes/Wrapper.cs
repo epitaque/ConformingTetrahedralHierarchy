@@ -26,7 +26,7 @@ namespace DMC {
 			DMC2.DMCLookupTableGenerator.Run();
 
 			InitializeHierarchy();
-			Update(startingPosition);
+			//Update(startingPosition);
 		}
 		public float FindTargetDepth(Vector3 position, Node node) {
 			float dist = Mathf.Clamp(Vector3.Distance((node.BoundingSphere.Center), position/WorldSize) - (node.BoundRadius), 0, float.MaxValue) * WorldSize;
@@ -84,7 +84,7 @@ namespace DMC {
 			return (int)clamped;
 		}
 		public void InitializeHierarchy() {
-			Hierarchy = DMC.DebugAlgorithm.CreateTestHierarchy(); //DMC.DebugAlgorithm.Run(new Vector3(0, 0, 0));
+			Hierarchy = DMC.DebugAlgorithm.CreateHierarchy(); //DMC.DebugAlgorithm.CreateTestHierarchy(); //DMC.DebugAlgorithm.Run(new Vector3(0, 0, 0));
 			PrecomputedVolumeMesh = DMC.DebugAlgorithm.CreatePrecomputedVolumeMesh(Hierarchy.RootDiamond.Tetrahedra[0]);
 		}
 
