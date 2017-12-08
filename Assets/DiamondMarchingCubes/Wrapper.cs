@@ -23,66 +23,10 @@ namespace DMC {
 			LoadedLeafNodes = new List<Node>();
 			UnityObjects = new Hashtable();
 
-			DMC2.DMCLookupTableGenerator.Run();
-
 			InitializeHierarchy();
 			//Update(startingPosition);
 		}
-		public float FindTargetDepth(Vector3 position, Node node) {
-			float dist = Mathf.Clamp(Vector3.Distance((node.BoundingSphere.Center), position/WorldSize) - (node.BoundRadius), 0, float.MaxValue) * WorldSize;
 
-			float targetDepth = 8.32f - 0.683f * Mathf.Log(dist + 1.5f, 2.718f);//(6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
-			float clamped = Mathf.Clamp(targetDepth, 1f, (float)MaxDepth);
-			return (int)clamped;
-		}
-		public bool LinShouldSplit(Vector3 position, Node node) {
-			if (node.Depth < 8f) {
-                return true;
-			}
-            if (node.Depth < WorldSize * 4f / 3f + 8f) {
-                float a = 1.0f;
-                float b = 2.0f;
-                float c = 0.7f;
-                float r = node.BoundingSphere.Radius;
-				float d = Mathf.Pow(Vector3.Distance(position / WorldSize, node.BoundingSphere.Center), 2f) / r - b;
-
-                bool split = d * a < c;
-                return split;
-            }
-			return false;
-		}
-
-		public float LinFindTargetDepth(Vector3 position, Node node) {
-			if(LinShouldSplit(position, node) && node.Depth < MaxDepth) {
-				return node.Depth + 1f;
-			}
-			else if(node.Parent != null && !LinShouldSplit(position, node.Parent) && node.Depth > 2f) {
-				return node.Depth - 1f;
-			}
-			return node.Depth;
-
-		}
-		public float FindTargetDepth4(Vector3 position, Node node) {
-			float targetDepth = 0;
-			position = new Vector3(0, 0, 0);
-			float dist = Vector3.Distance(node.BoundingSphere.Center, position) - node.BoundingSphere.Radius;
-			dist = Mathf.Clamp(dist, 0, float.MaxValue);
-			if(dist < 0.1f) {
-				targetDepth = 6;
-			}
-			UnityEngine.Debug.Log(node.Number + ": Node depth: " + node.Depth + ", target depth: " + targetDepth + 
-			", distance: " + (dist + node.BoundRadius) + " node cv: " + node.CentralVertex + 
-			"bound radius: " + node.BoundingSphere.Radius + "bounding sphere center: " + node.BoundingSphere.Center);
-			return targetDepth;
-		}
-		public float FindTargetDepth3(Vector3 position, Node node) {
-			float targetDepth = 0;
-			float dist = Vector3.Distance(position, node.BoundingSphere.Center) - node.BoundingSphere.Radius * 1.1f;
-			dist = Mathf.Clamp(dist, 0, float.MaxValue);
-			targetDepth = (6f / Mathf.Log((dist / 11f) + 1.2f, 10f));
-			float clamped = Mathf.Clamp(targetDepth, 1f, (float)MaxDepth);
-			return (int)clamped;
-		}
 		public void InitializeHierarchy() {
 			Hierarchy = DMC.DebugAlgorithm.CreateHierarchy(); //DMC.DebugAlgorithm.CreateTestHierarchy(); //DMC.DebugAlgorithm.Run(new Vector3(0, 0, 0));
 			PrecomputedVolumeMesh = DMC.DebugAlgorithm.CreatePrecomputedVolumeMesh(Hierarchy.RootDiamond.Tetrahedra[0]);
@@ -93,7 +37,7 @@ namespace DMC {
 			//DMC.DebugAlgorithm.LoopMakeConforming(Hierarchy, 4);
 			//DMC.DebugAlgorithm.CheckSplit(Hierarchy)
 
-			DMC.DebugAlgorithm.Adapt(Hierarchy, viewerPosition);
+			//DMC.DebugAlgorithm.Adapt(Hierarchy, viewerPosition);
 
 			Meshify();
 		}

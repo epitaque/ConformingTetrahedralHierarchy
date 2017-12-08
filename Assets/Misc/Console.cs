@@ -67,7 +67,6 @@ public class Console : MonoBehaviour {
         }
     }
     public void PrintString(string str) {
-        UnityEngine.Debug.Log("PrintString called");
         Lines[CurrentLine] = str;
         CurrentLine = (CurrentLine + 1) % MaxLines;
         GenerateOutput();

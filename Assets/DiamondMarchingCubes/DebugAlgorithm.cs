@@ -2,22 +2,17 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
 using UnityEngine;
-
+//coarsen
 namespace DMC {
 	public static class DebugAlgorithm {
 		public static List<Diamond> DebugDiamonds = new List<Diamond>();
 
 		public static uint mostRecentTetrahedronCount = 0;
 
-		public static FindTargetDepth finder = FindTargetDepth2;
+		public static FindTargetDepth finder = DefaultFindTargetDepth;
 
 		public static Root Run(Vector3 PlayerLocation) {
-			//FindCorrectCombination();
-			//return null;
-			//FindCorrectCombinationOfTetVerticesAndOrder();
-			//CreateTestHierarchy();
 			return CreateHierarchy();
-			//return null;
 		}
 
 		public static Root CreateHierarchy() {
@@ -25,9 +20,6 @@ namespace DMC {
 
 			root.Diamonds = new Dictionary<Vector3, Diamond>();
 			root.Nodes = new Dictionary<uint, Node>();
-
-			root.SplitQueue = new Queue<Diamond>();
-			root.MergeQueue = new Queue<Diamond>();
 
 			root.IsValid = true;
 
@@ -53,14 +45,11 @@ namespace DMC {
 				node.CentralVertex = Utility.FindMidpoint(node.Vertices[0], node.Vertices[1]);
 				AddToDictionary(root, node);
 				rootNodes[i] = node;
-				node.BoundingSphere = Utility.CalculateBoundingSphere(node);
+				//node.BoundingSphere = Utility.CalculateBoundingSphere(node);
 			}
 
 			Diamond rootDiamond = new Diamond();
 			rootDiamond.Tetrahedra = new List<Node>(rootNodes);
-			rootDiamond.Phase = 0;
-			rootDiamond.Children = new List<Diamond>(6);
-			rootDiamond.Level = 0;
 			root.RootDiamond = rootDiamond;
 
 			return root;
@@ -68,10 +57,6 @@ namespace DMC {
 
 		public static Root CreateTestHierarchy() {
 			Root root = CreateHierarchy();
-
-			//DebugDiamonds.Add(root.RootDiamond);
-
-			//SplitDiamond(root, root.RootDiamond);
 
 			for(int i = 0; i < 6; i++) {
 				Node tet = root.RootDiamond.Tetrahedra[i];
@@ -99,7 +84,7 @@ namespace DMC {
 			float clamped = Mathf.Clamp(targetDepth, 1f, (float)maxDepth);
 			return (int)clamped;
 		}
-		public static float DefaultFindTargetDepth(Vector3 position, Node node) {
+		public static float DefaultFindTargetDepth(Node node, Vector3 position) {
 				float mapSize = 256f;
 				float maxDepth = 10f;
 				float dist = Mathf.Clamp(Vector3.Distance((node.CentralVertex * mapSize), position) - (node.BoundRadius * mapSize * 1.2f), 0, float.MaxValue);
@@ -142,54 +127,55 @@ namespace DMC {
 			return max;
 		}
 
-		public static float FindMinDepth(Diamond d) {
-			float min = int.MaxValue;
+		public static int FindMinDepth(Diamond d) {
+			int min = int.MaxValue;
 			foreach(Node n in d.Tetrahedra) {
-				float de = n.Depth;
+				int de = n.Depth;
 				if(de < min) {
 					min = de;
 				}
 			}
+			if(min == int.MaxValue) return 0;
 			return min;
 		}
 
-		// returns true if no further adaption is required
-		public static bool Adapt(Root root, Vector3 position) {
+		private static ulong frameN = 0;
+		private static ulong splitDiamondsCalled = 0;
+		private static ulong mergeNodesCalled = 0;
+		public static void Adapt(Root root, Vector3 position) {
+			frameN++;
 			System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-			sw.Start();
+			System.Diagnostics.Stopwatch swR = new System.Diagnostics.Stopwatch();
+			sw.Start(); swR.Start();
 			Refine(root, position);
+			swR.Stop();
 			Coarsen(root, position);
-			sw.Stop();
-			Debug.Log("Adapt took " + sw.ElapsedMilliseconds + "ms");
-			return true;
-			/*bool res = true;
-			foreach(Node child in root.RootDiamond.Tetrahedra) {
-				if(coarsen) {
-					if(!RecursiveAdaptCoarsen(root, child, position)) {
-						res = false;
-					}
-				}
-				else {
-					if(!RecursiveAdaptRefine(root, child, position)) {
-						res = false;
-					}
-				}
-			}
-			return res;*/
+			sw.Stop(); swR.Stop();
+			string prntMessage = "Adapt took " + sw.ElapsedMilliseconds + "ms (" + swR.ElapsedMilliseconds + "ms to refine, " + (sw.ElapsedMilliseconds - swR.ElapsedMilliseconds) + " to coarsen.";
+			prntMessage += " ||| mergeNodesCalled: " + mergeNodesCalled + ", splitDiamondsCalled: " + splitDiamondsCalled;
+			Debug.Log(prntMessage);
+			mergeNodesCalled = 0;
+			splitDiamondsCalled = 0;
 		}
 
 
 		public static void Coarsen(Root root, Vector3 position) {
+			mergeNodesCalled = 0;
 			for(int i = 0; i < 6; i++) {
 				Coarsen(root, root.RootDiamond.Tetrahedra[i], position);
 			}
+			Debug.Log("Coarsen called. MergeTetrahedron called " + mergeNodesCalled + " times.");
 		}
 
 		public static void Coarsen(Root root, Node node, Vector3 position) {
 			if(node == null || node.IsDeleted) return;
 			Diamond d = root.Diamonds[node.CentralVertex];
+			if(d.lastFrameUpdated == frameN) {
+				//return;
+			}
+			d.lastFrameUpdated = frameN;
 			int maxTargetDepth = (int)FindMaxTargetDepth(d, position);
-			int minDepth = (int)FindMinDepth(d);
+			int minDepth = FindMinDepth(d);
 			if( (minDepth) > maxTargetDepth) { // node needs to have higher depth (be more refined)
 				MergeTetrahedron(root, node);
 			}
@@ -201,112 +187,31 @@ namespace DMC {
 			}
 		}
 
-		// returns true if no further adaption is required
-		private static bool RecursiveAdaptRefine(Root root, Node node, Vector3 position) {
-			Debug.Log("adapting at position: " + position);
-			bool res = true;
-			if(node.IsLeaf) {
-				Diamond d = root.Diamonds[node.CentralVertex];
-				int targetDepth = (int)FindMaxTargetDepth(d, position);
-				if(node.Depth < targetDepth) { // node needs to have higher depth (be more refined)
-					SplitDiamond(root, d);	   // so split the node
-					res = false;
-				}
-			}
-			else {
-				foreach(Node child in node.Children) {
-					//if(node.IsLeaf) break;
-					//if(!child.IsLeaf) continue;
-					if(!RecursiveAdaptRefine(root, child, position)) {
-						res = false;
-					}
-				}
-			}
-
-			return res;
-		}
-		private static bool RecursiveAdaptCoarsen(Root root, Node node, Vector3 position) {
-			bool needsNoFurtherAdaption = true;
-			if(node.IsLeaf) {
-				Diamond d = root.Diamonds[node.CentralVertex];
-				int targetDepth = (int)FindMaxTargetDepth(d, position);
-				if(node.Depth > targetDepth && node.Depth != 0) { // node depth is too large
-					MergeTetrahedron(root, node);
-					needsNoFurtherAdaption = false;
-				}
-			}
-			else {
-				foreach(Node child in node.Children) {
-					if(node.IsLeaf) break;
-					if(!RecursiveAdaptCoarsen(root, child, position)) {
-						needsNoFurtherAdaption = false;
-					}
-				}
-			}
-
-			return needsNoFurtherAdaption;
-		}
-
-
-
-		public static void Adapt(Root root, Node node, Vector3 position) {
-			if(node == null || node.IsDeleted) return;
-			if(!node.IsLeaf) {
-				Debug.Assert(node.Children[0] != null);
-				Debug.Assert(node.Children[1] != null);
-				Debug.Assert(root != null);
-				//Debug.Log("Root: " + root + ", c1: " + node.Children[0] + ", c2: " + node.Children[1] + ", position: " + position);
-				Adapt(root, node.Children[0], position);
-				if(node.Children == null) return;
-				Adapt(root, node.Children[1], position);
-			}
-			else {
-				Diamond d = root.Diamonds[node.CentralVertex];
-				float maxTargetDepth = FindMaxTargetDepth(d, position);
-				float maxDepth = FindMaxDepth(d);
-				float minDepth = FindMinDepth(d);
-				if(minDepth < maxTargetDepth) {
-					SplitDiamond(root, d);
-				}
-				else if(minDepth > maxTargetDepth) {
-					//MergeTetrahedron(root, node.Parent);
-				}
-			}
-		}
-
-		public static bool ShouldSplitDiamond(Diamond diamond, Vector3 position) {
-			float nshouldsplit = 0;
-			float ntotald2 = 0;
-			foreach(Node n in diamond.Tetrahedra) {
-				if(n == null) continue;
-				ntotald2++;
-				if(finder(n, position) > n.Depth) {
-					nshouldsplit++;
-				}
-			}
-			if(nshouldsplit/ntotald2 >= 0.5) {
-				return true;
-			}
-			return false;
-		}
-
 		public static void Refine(Root root, Vector3 position) {
+			splitDiamondsCalled = 0;
 			for(int i = 0; i < 6; i++) {
 				CheckSplit(root, position, root.RootDiamond.Tetrahedra[i]);
 			}
-
+			Debug.Log("Refine called. SplitDiamond called " + splitDiamondsCalled + " times.");
 		}
 
 		public static void CheckSplit(Root root, Vector3 position, Node node) {
-			if(finder(node, position) > node.Depth) {
-				SplitDiamond(root, root.Diamonds[node.CentralVertex]);
+			if(node.IsLeaf) {
+				if(node.Depth < finder(node, position)) {
+					SplitDiamond(root, root.Diamonds[node.CentralVertex]);
 
+					CheckSplit(root, position, node.Children[0]);
+					CheckSplit(root, position, node.Children[1]);
+				}
+			}
+			else {
 				CheckSplit(root, position, node.Children[0]);
 				CheckSplit(root, position, node.Children[1]);
 			}
 		}
 
 		public static void SplitDiamond(Root root, Diamond diamond) {
+			splitDiamondsCalled++;
 			//Debug.Log("Splitting diamond.");
 			// Create the children diamonds if they don't exist
 
@@ -327,6 +232,7 @@ namespace DMC {
 		}
 
 		public static void MergeTetrahedron(Root root, Node node) {
+			mergeNodesCalled++;
 			List<Node> toBeDeleted = new List<Node>();
 			MergeTetrahedron(root, node, toBeDeleted);
 			foreach(Node n in toBeDeleted) {
@@ -370,23 +276,8 @@ namespace DMC {
 			node.IsLeaf = true;
 		}
 
-		public static void TryAddDiamond(Root root, Vector3 offset, Diamond parentDiamond) {
-			if(IsOutOfBounds(offset)) return;
-			if(root.Diamonds.ContainsKey(offset)) {
-				root.Diamonds[offset].Parents.Add(parentDiamond);
-			}
-			Diamond d = new Diamond();
-			d.CentralVertex = offset;
-			d.Tetrahedra = new List<Node>();
-			d.Phase = (parentDiamond.Phase + 1) % 3;
-			d.Level = parentDiamond.Level;
-			if(parentDiamond.Phase == 2) { d.Level++; }
-			d.Parents = new List<Diamond>();
-			d.Parents.Add(parentDiamond);
-			d.Children = new List<Diamond>();
-		}
-
 		public static void SplitNode(Root root, Node node) {
+
 			node.Children = new Node[2];
 			node.IsLeaf = false;
 
@@ -423,15 +314,10 @@ namespace DMC {
 				}
 				child.BoundRadius = Vector3.Distance(child.HVertices[0], child.HVertices[1]) / 2f;
 				child.CentralVertex = Utility.FindMidpoint(child.HVertices[0], child.HVertices[1]);
-				child.BoundingSphere = Utility.CalculateBoundingSphere(child);
+				//child.BoundingSphere = Utility.CalculateBoundingSphere(child);
 				node.Children[i] = child;
 				AddToDictionary(root, child);
 			}
-		}
-
-
-		public static bool IsOutOfBounds(Vector3 A) {
-			return A.x < -1 || A.y < -1 || A.z < -1 || A.x > 1 || A.y > 1 || A.z > 1;
 		}
 
 		public static void AddToDictionary(Root root, Node node) {
@@ -442,7 +328,10 @@ namespace DMC {
 				Vector3 midpoint = (A + B) / 2f;
 
 				if(!root.Diamonds.ContainsKey(midpoint)) {
-					CreateDiamond(root, midpoint, node);
+					Diamond d = new Diamond();
+					d.CentralVertex = midpoint;
+					d.Tetrahedra = new List<Node>();
+					root.Diamonds.Add(midpoint, d);
 				}
 				Debug.Assert(root.Diamonds.ContainsKey(midpoint));
 				if(!root.Diamonds[midpoint].Tetrahedra.Contains(node)) {
@@ -465,16 +354,6 @@ namespace DMC {
 
 				}
 			}
-		}
-
-		public static void CreateDiamond(Root root, Vector3 centralVertex, Node sourceTet) {
-			Diamond d = new Diamond();
-			d.Level = sourceTet.Depth / 3;
-			d.Phase = sourceTet.Depth % 3;
-			d.Tetrahedra = new List<Node>();
-			d.CentralVertex = centralVertex;
-			root.Diamonds.Add(centralVertex, d);
-			
 		}
 
 		public static Vector3 FindCentroid(Node Node, int FaceNumber) {
@@ -712,204 +591,6 @@ namespace DMC {
 			return m;
 
 		}
-		public static void VisualizeDiamonds() {
-			float scale = 20f;
-
-			foreach(Diamond d in DebugDiamonds) {
-				Vector3 SpineA = Vector3.down * 3;
-				Vector3 SpineB = Vector3.up;
-
-				Gizmos.color = Color.black;
-				foreach(Node tet in d.Tetrahedra) {
-					for(int i = 0; i < 6; i++) {
-						Vector3 A = tet.Vertices[Lookups.EdgePairs[i, 0]];
-						Vector3 B = tet.Vertices[Lookups.EdgePairs[i,1]];
-						UnityEngine.Gizmos.DrawLine(A * scale, B * scale);
-						if((A + B) / 2 == d.CentralVertex) {
-							SpineA = A;
-							SpineB = B;
-						}
-					}
-				}
-
-				Debug.Assert(SpineA != Vector3.down * 3);
-
-				d.SpineA = SpineA;
-				d.SpineB = SpineB;
-
-				Gizmos.color = Color.green;
-				UnityEngine.Gizmos.DrawLine(SpineA * scale, SpineB * scale);
-
-				Gizmos.color = Color.blue;
-				UnityEngine.Gizmos.DrawSphere(d.CentralVertex * scale, 0.2f * scale);
-
-				Gizmos.color = Color.red;
-				var parents = GetParentDiamondLocations(d);
-				foreach(Vector3 p in parents) {
-					UnityEngine.Gizmos.DrawSphere(p * scale, 0.2f * scale);
-				}
-			}
-		}
-
-		public static List<Vector3> GetParentDiamondLocations(Diamond d) {
-			List<Vector3> parentDiamonds = new List<Vector3>();
-
-			Vector3 v0 = d.SpineA;
-			Vector3 vd = d.SpineB;
-
-			for(int j = 1; j <= Lookups.DiamondParents[d.Phase]; j++) {
-				Vector3 ej = Lookups.ej[j];
-				Vector3 vx = v0 + Vector3.Dot((v0 - vd), ej) * Vector3.one;
-
-				parentDiamonds.Add( (vx + v0) / 2);
-			}
-
-			return parentDiamonds;
-
-		}
 	}
 
 }
-
-// junk
-/*
-		public static void LoopMakeConforming(Root root, int MaxIterations = 20) {
-			int i = 0;
-			while(!MakeConforming(root)) {
-				if(i > MaxIterations) {
-					UnityEngine.Debug.LogWarning("WARNING: LoopMakeConforming iterations maximum reached at " + MaxIterations);
-					break;
-				}
-				i++;
-			}
-			UnityEngine.Debug.Log("LoopMakeConforming finished at " + i + " iterations.");
-		}
-		public static bool MakeConforming(Root root) {
-			bool needsNoFurtherIterations = true;
-			foreach(Node child in root.Children) {
-				if(!RecursiveMakeConforming(root, child)) {
-					needsNoFurtherIterations = false;
-				}
-			}
-			return needsNoFurtherIterations;
-		}
-		private static bool RecursiveMakeConforming(Root root, Node node) {
-			bool needsNoFurtherIterations = true;
-			if(node.IsLeaf) {
-				// check to see if neighboring nodes have children of children
-				List<Node> neighbors = FindNeighboringNodes(root, node);
-				List<Node> toBeSplit = new List<Node>();
-				foreach(Node neighbor in neighbors) {
-						if(neighbor.IsLeaf) continue;
-						if(neighbor.Children[0].IsLeaf && neighbor.Children[1].IsLeaf) continue;
-						if(neighbor.Depth < node.Depth) continue;
-						else {
-							toBeSplit.Add(node);
-							needsNoFurtherIterations = false;
-						}
-				}
-				foreach(Node nodeToSplit in toBeSplit) {
-					SplitAllNodesInDiamondIfPossible(root, nodeToSplit);
-				}
-			}
-			else {
-				foreach(Node child in node.Children) {
-					if(!RecursiveMakeConforming(root, child)) {
-						needsNoFurtherIterations = false;
-					}
-				}
-			}
-			return needsNoFurtherIterations;
-		}
-
-		// returns true if successful split
-		public static bool SplitAllNodesInDiamondIfPossible(Root root, Node node) {
-			UnityEngine.Debug.Log("SplitAllNodesInDiamondIfPossible called on Node " + node.Number);
-			int MaxNumberOfTetsInDiamond = Lookups.DiamondNumberOfTetrahedra[node.Depth % 3];
-			int ActualNumberOfTetsInDiamond = root.CVToNodeList[node.CentralVertex].Count;
-			UnityEngine.Debug.Log("MaxNumberOfTetsInDiamond: " + MaxNumberOfTetsInDiamond + ", ActualNumberOfTetsInDiamond: " + ActualNumberOfTetsInDiamond);
-			UnityEngine.Debug.Assert(ActualNumberOfTetsInDiamond <= MaxNumberOfTetsInDiamond);
-			if(!(ActualNumberOfTetsInDiamond <= MaxNumberOfTetsInDiamond)) {
-				string Depths = "";
-				foreach(Node n in root.CVToNodeList[node.CentralVertex]) {
-					Depths += n.Depth + ", ";
-				}
-				UnityEngine.Debug.LogError("Depths string: " + Depths);
-			}
-			if(MaxNumberOfTetsInDiamond == ActualNumberOfTetsInDiamond) {
-				foreach(Node n in root.CVToNodeList[node.CentralVertex]) {
-					if(!n.IsLeaf) {
-						return false;
-					}
-				}
-				foreach(Node n in root.CVToNodeList[node.CentralVertex]) {
-					UnityEngine.Debug.Assert(n.IsLeaf);
-					SplitNode(root, n);
-				}
-				return true;
-			}
-			return false;
-		}
-
-		public static void MergeNodeIfPossible(Root root, Node node) {
-			List<Node> ParentDiamond = root.CVToNodeList[node.Parent.CentralVertex];
-
-			List<Node> Children = new List<Node>();
-			foreach(Node parent in ParentDiamond) {
-				Children = Children.Union(parent.Children).ToList();
-			}
-			foreach(Node child in Children) {
-				if(!child.IsLeaf) {
-					Debug.Log("INFO: Failed to merge node because child of node of parent diamond is not a leaf.");
-					return;
-				}
-			}
-			foreach(Node parent in ParentDiamond) {
-				CoarsenNodes(root, parent);
-			}
-		}
-
-		public static Node FindSiblingNode(Node node) {
-			UnityEngine.Debug.Assert(node.Depth >= 1);
-			Node[] siblings = node.Parent.Children;
-			return siblings[0].Number == node.Number ? siblings[1] : siblings[0];
-		}
- 
-		public static Node FindDiamondNode(Root root, Node node) {
-			List<Node> neighbors = FindNeighboringNodes(root, node);
-			foreach(Node neighbor in neighbors) {
-				if(neighbor.Number != node.Number && neighbor.CentralVertex == node.CentralVertex) {
-					return neighbor;
-				}
-			}
-			UnityEngine.Debug.LogError("Could not find other node that makes diamond! Node " + node.Number);
-			return null;
-		}
-
-		public static List<Node> FindNeighboringNodes(Root root, Node node) {
-			List<Node> neighboringNodes = new List<Node>();
-
-			for(int i = 0; i < 4; i++) {
-				Vector3 centroid = FindCentroid(node, i);
-
-				if(root.FaceToNodeList.ContainsKey(centroid)) {
-					neighboringNodes = neighboringNodes.Union(root.FaceToNodeList[centroid]).ToList();
-				}
-			}
-
-			return neighboringNodes;
-		}
-
-				public static void CoarsenNodes(Root root, Node parent) {
-			foreach(Node child in parent.Children) {
-				UnityEngine.Debug.Assert(child.IsLeaf);
-				root.Nodes.Remove(child.Number);
-				for(int i = 0; i < 4; i++) {
-					Vector3 centroid = FindCentroid(child, i);
-					root.FaceToNodeList[centroid].Remove(child);
-				}
-			}
-			parent.Children = null;
-			parent.IsLeaf = true;
-		}
- */

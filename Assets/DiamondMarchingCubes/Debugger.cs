@@ -111,7 +111,7 @@ namespace DMC {
         }
 
         public void HighlightBoundingSphere(Node node) {
-            this.HighlightedBoundingSpheres.Add(node.BoundingSphere);
+            //this.HighlightedBoundingSpheres.Add(node.BoundingSphere);
         }
 
 		public void SplitNode(string nodeNumberStr) {

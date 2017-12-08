@@ -17,7 +17,7 @@ namespace DMC {
 		public bool ReversedWindingOrder;
 		public GameObject UnityObject;
 		public Node Parent;
-		public Sphere BoundingSphere;
+		//public Sphere BoundingSphere;
 		public bool IsDeleted;
 	}
 
@@ -25,23 +25,15 @@ namespace DMC {
 		public Dictionary<uint, Node> Nodes; // Index: Node number | Value: Node
 		public Dictionary<Vector3, Diamond> Diamonds;
 
-		public Queue<Diamond> SplitQueue;
-		public Queue<Diamond> MergeQueue;
-
 		public Diamond RootDiamond;
 
 		public bool IsValid; // true if every split uses the longest edge
 	}
 
 	public class Diamond {
-		public List<Node> Tetrahedra;
-		public int Phase;
-		public int Level;
-		public List<Diamond> Parents;
-		public List<Diamond> Children;
 		public Vector3 CentralVertex;
-		public Vector3 SpineA;
-		public Vector3 SpineB;
+		public List<Node> Tetrahedra;
+		public ulong lastFrameUpdated = 0;
 	}
 
 	public class Hexahedron {
